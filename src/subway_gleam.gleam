@@ -1,11 +1,16 @@
 import gleam/erlang/process
+import gleam/float
 import gleam/http/request
 import gleam/httpc
+import gleam/int
 import gleam/list
 import gleam/option
+import gleam/order
+import gleam/pair
 import gleam/result
 import gleam/string
 import gleam/time/calendar
+import gleam/time/duration
 import gleam/time/timestamp
 import gtfs_rt_nyct
 import mist
@@ -52,23 +57,45 @@ fn handler(req: wisp.Request) -> wisp.Response {
     gtfs
     |> result.map(trains_stopping(_, at: "635"))
     |> result.map(
-      list.sort(_, by: fn(a, b) { timestamp.compare(a.time, b.time) }),
-    )
-    |> result.map(
-      list.fold(_, from: "", with: fn(acc, update) {
-        let TrainStopping(trip:, time:, stop_id:) = update
-        acc
-        <> trip.route_id
-        <> ": "
-        <> time
-        |> timestamp.to_calendar(calendar.local_offset())
-        |> string.inspect
-        <> "<br/>"
+      list.sort(_, by: fn(a, b) {
+        timestamp.compare(a.time, b.time) |> order.negate
       }),
     )
+    |> result.map(
+      list.fold(_, from: #([], []), with: fn(acc, update) {
+        let TrainStopping(trip:, time:, stop_id:) = update
+        let #(uptown_acc, downtown_acc) = acc
+        let text =
+          trip.route_id
+          <> ": "
+          <> time
+          |> timestamp.difference(timestamp.system_time(), _)
+          |> duration.to_seconds()
+          |> float.divide(60.0)
+          |> result.unwrap(0.0)
+          |> float.round
+          |> int.to_string
+          <> "min ("
+          <> time
+          |> timestamp.to_calendar(calendar.local_offset())
+          |> pair.second
+          |> string.inspect
+          <> ")"
+        case stop_id |> string.ends_with("N") {
+          True -> #([text, ..uptown_acc], downtown_acc)
+          False -> #(uptown_acc, [text, ..downtown_acc])
+        }
+      }),
+    )
+    |> result.map(pair.map_first(_, list.take(_, 10)))
+    |> result.map(pair.map_second(_, list.take(_, 10)))
 
   let body = case gtfs {
-    Ok(gtfs) -> "Stopping at 14th st Union Sq:<br/>" <> gtfs
+    Ok(#(uptown, downtown)) ->
+      "<h1>Stopping at 14th st Union Sq:</h1><h2>Uptown</h2>"
+      <> uptown |> list.fold("", fn(acc, text) { acc <> "</br>" <> text })
+      <> "<br/><h2>Downtown</h2>"
+      <> downtown |> list.fold("", fn(acc, text) { acc <> "</br>" <> text })
     Error(err) -> "Error: " <> string.inspect(err)
   }
 
@@ -157,7 +184,7 @@ fn trains_stopping(
         let gtfs_rt_nyct.UnixTime(unix_secs) = unix
         let time = timestamp.from_unix_seconds(unix_secs)
 
-        TrainStopping(trip:, time:, stop_id:) |> Ok
+        TrainStopping(trip:, time:, stop_id: stop.stop_id) |> Ok
       }
 
       case stop {
