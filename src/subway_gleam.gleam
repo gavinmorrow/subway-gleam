@@ -1,12 +1,12 @@
 import gleam/erlang/process
 import gleam/http/request
 import gleam/httpc
-import gleam/int
 import gleam/list
 import gleam/option
-import gleam/order
 import gleam/result
 import gleam/string
+import gleam/time/calendar
+import gleam/time/timestamp
 import gtfs_rt_nyct
 import mist
 import protobin
@@ -51,22 +51,24 @@ fn handler(req: wisp.Request) -> wisp.Response {
   let gtfs =
     gtfs
     |> result.map(trains_stopping(_, at: "635"))
-    |> result.map(list.sort(_, by: sort_trip_update_by_time))
+    |> result.map(
+      list.sort(_, by: fn(a, b) { timestamp.compare(a.time, b.time) }),
+    )
     |> result.map(
       list.fold(_, from: "", with: fn(acc, update) {
-        let #(trip, update) = update
+        let TrainStopping(trip:, time:, stop_id:) = update
         acc
         <> trip.route_id
         <> ": "
-        <> update.arrival
-        |> option.map(string.inspect)
-        |> option.unwrap("unknown time")
+        <> time
+        |> timestamp.to_calendar(calendar.local_offset())
+        |> string.inspect
         <> "<br/>"
       }),
     )
 
   let body = case gtfs {
-    Ok(gtfs) -> "Data: " <> string.inspect(gtfs)
+    Ok(gtfs) -> "Stopping at 14th st Union Sq:<br/>" <> gtfs
     Error(err) -> "Error: " <> string.inspect(err)
   }
 
@@ -122,20 +124,41 @@ fn fetch_gtfs_rt_bin(feed: GtfsRtFeed) -> Result(BitArray, httpc.HttpError) {
   res.body |> Ok
 }
 
+type StopId =
+  String
+
+type TrainStopping {
+  TrainStopping(
+    trip: gtfs_rt_nyct.TripDescriptor,
+    time: timestamp.Timestamp,
+    stop_id: StopId,
+  )
+}
+
 fn trains_stopping(
   feed: gtfs_rt_nyct.FeedMessage,
-  at stop_id: String,
-) -> List(#(gtfs_rt_nyct.TripDescriptor, gtfs_rt_nyct.StopTimeUpdate)) {
+  at stop_id: StopId,
+) -> List(TrainStopping) {
   use acc, entity <- list.fold(over: feed.entity, from: [])
 
   case entity.data {
     gtfs_rt_nyct.TripUpdate(trip:, stop_time_updates:) -> {
-      let stop =
-        stop_time_updates
-        |> list.find(one_that: fn(update) {
-          update.stop_id |> string.starts_with(stop_id)
-        })
-        |> result.map(fn(stop) { #(trip, stop) })
+      let is_stop = fn(update: gtfs_rt_nyct.StopTimeUpdate) {
+        update.stop_id |> string.starts_with(stop_id)
+      }
+
+      let stop = {
+        use stop <- result.try(list.find(stop_time_updates, one_that: is_stop))
+
+        let stop_time_event =
+          stop.arrival |> option.or(stop.departure) |> option.to_result(Nil)
+        use gtfs_rt_nyct.StopTimeEvent(unix) <- result.try(stop_time_event)
+
+        let gtfs_rt_nyct.UnixTime(unix_secs) = unix
+        let time = timestamp.from_unix_seconds(unix_secs)
+
+        TrainStopping(trip:, time:, stop_id:) |> Ok
+      }
 
       case stop {
         Ok(stop) -> [stop, ..acc]
@@ -143,30 +166,5 @@ fn trains_stopping(
       }
     }
     _ -> acc
-  }
-}
-
-fn sort_trip_update_by_time(
-  a: #(gtfs_rt_nyct.TripDescriptor, gtfs_rt_nyct.StopTimeUpdate),
-  b: #(gtfs_rt_nyct.TripDescriptor, gtfs_rt_nyct.StopTimeUpdate),
-) -> order.Order {
-  let #(_, a) = a
-  let #(_, b) = b
-
-  let a =
-    a.arrival
-    |> option.or(a.departure)
-    |> option.map(fn(stop_time_event) { stop_time_event.time })
-  let b =
-    b.arrival
-    |> option.or(b.departure)
-    |> option.map(fn(stop_time_event) { stop_time_event.time })
-
-  case a, b {
-    option.Some(gtfs_rt_nyct.UnixTime(a)), option.Some(gtfs_rt_nyct.UnixTime(b))
-    -> int.compare(a, b)
-    option.Some(_), option.None -> order.Gt
-    option.None, option.Some(_) -> order.Lt
-    option.None, option.None -> order.Eq
   }
 }
