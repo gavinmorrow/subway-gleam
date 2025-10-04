@@ -1,5 +1,6 @@
 import gleam/float
 import gleam/http/request
+import gleam/http/response
 import gleam/httpc
 import gleam/int
 import gleam/list
@@ -12,8 +13,24 @@ import gleam/time/calendar
 import gleam/time/duration
 import gleam/time/timestamp
 import gtfs_rt_nyct
+import lustre/element
+import lustre/element/html
 import protobin
 import wisp
+
+pub fn lustre_res(
+  req: wisp.Request,
+  handle_request: fn(wisp.Request) -> #(element.Element(msg), wisp.Response),
+) -> wisp.Response {
+  let #(html, res) = handle_request(req)
+
+  response.set_body(
+    res,
+    html
+      |> element.to_document_string
+      |> wisp.Text,
+  )
+}
 
 pub fn middleware(
   req: wisp.Request,
@@ -25,12 +42,22 @@ pub fn middleware(
   handle_request(req)
 }
 
-pub fn index(_req: wisp.Request) -> wisp.Response {
-  wisp.html_response("subways! yay!", 200)
+pub fn index(req: wisp.Request) -> wisp.Response {
+  use _req <- lustre_res(req)
+
+  let body = html.p([], [html.text("subways! yay!")])
+  let res = wisp.response(200)
+
+  #(body, res)
 }
 
-pub fn not_found(_req: wisp.Request) -> wisp.Response {
-  wisp.html_response("404 not found :[", 404)
+pub fn not_found(req: wisp.Request) -> wisp.Response {
+  use _req <- lustre_res(req)
+
+  let body = html.p([], [html.text("404 not found :[")])
+  let res = wisp.response(404)
+
+  #(body, res)
 }
 
 pub fn stop(_req: wisp.Request, stop_id: StopId) -> wisp.Response {
