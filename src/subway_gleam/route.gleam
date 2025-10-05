@@ -74,25 +74,9 @@ pub fn stop(_req: wisp.Request, stop_id: StopId) -> wisp.Response {
       timestamp.compare(a.time, b.time) |> order.negate
     })
     |> list.fold(from: #([], []), with: fn(acc, update) {
-      let TrainStopping(trip:, time:, stop_id:) = update
       let #(uptown_acc, downtown_acc) = acc
-      let text =
-        trip.route_id
-        <> ": "
-        <> time
-        |> timestamp.difference(timestamp.system_time(), _)
-        |> duration.to_seconds()
-        |> float.divide(60.0)
-        |> result.unwrap(0.0)
-        |> float.round
-        |> int.to_string
-        <> "min ("
-        <> time
-        |> timestamp.to_calendar(calendar.local_offset())
-        |> pair.second
-        |> string.inspect
-        <> ")"
-      case stop_id |> string.ends_with("N") {
+      let text = describe_arrival(update)
+      case update.stop_id |> string.ends_with("N") {
         True -> #([text, ..uptown_acc], downtown_acc)
         False -> #(uptown_acc, [text, ..downtown_acc])
       }
@@ -245,4 +229,24 @@ fn trains_stopping(
     }
     _ -> acc
   }
+}
+
+fn describe_arrival(update: TrainStopping) -> String {
+  let TrainStopping(trip:, time:, stop_id: _) = update
+
+  trip.route_id
+  <> ": "
+  <> time
+  |> timestamp.difference(timestamp.system_time(), _)
+  |> duration.to_seconds()
+  |> float.divide(60.0)
+  |> result.unwrap(0.0)
+  |> float.round
+  |> int.to_string
+  <> "min ("
+  <> time
+  |> timestamp.to_calendar(calendar.local_offset())
+  |> pair.second
+  |> string.inspect
+  <> ")"
 }
