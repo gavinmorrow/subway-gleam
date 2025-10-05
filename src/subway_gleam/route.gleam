@@ -61,61 +61,47 @@ pub fn not_found(req: wisp.Request) -> wisp.Response {
 }
 
 pub fn stop(_req: wisp.Request, stop_id: StopId) -> wisp.Response {
-  let gtfs = {
+  let data = {
     use feed <- result.try(
       gtfs_rt_feed_from_stop_id(stop_id)
       |> result.replace_error(InvalidStopId(stop_id)),
     )
-    use bits <- result.try(
-      fetch_gtfs_rt_bin(feed) |> result.map_error(HttpError),
-    )
-    protobin.parse_with_config(
-      from: bits,
-      using: gtfs_rt_nyct.feed_message_decoder(),
-      config: protobin.Config(ignore_groups: True),
-    )
-    |> result.map(fn(parsed) { parsed.value })
-    |> result.map_error(ParseError)
+    use gtfs <- result.map(fetch_gtfs(feed:))
+
+    gtfs
+    |> trains_stopping(at: stop_id)
+    |> list.sort(by: fn(a, b) {
+      timestamp.compare(a.time, b.time) |> order.negate
+    })
+    |> list.fold(from: #([], []), with: fn(acc, update) {
+      let TrainStopping(trip:, time:, stop_id:) = update
+      let #(uptown_acc, downtown_acc) = acc
+      let text =
+        trip.route_id
+        <> ": "
+        <> time
+        |> timestamp.difference(timestamp.system_time(), _)
+        |> duration.to_seconds()
+        |> float.divide(60.0)
+        |> result.unwrap(0.0)
+        |> float.round
+        |> int.to_string
+        <> "min ("
+        <> time
+        |> timestamp.to_calendar(calendar.local_offset())
+        |> pair.second
+        |> string.inspect
+        <> ")"
+      case stop_id |> string.ends_with("N") {
+        True -> #([text, ..uptown_acc], downtown_acc)
+        False -> #(uptown_acc, [text, ..downtown_acc])
+      }
+    })
+    |> pair.map_first(list.take(_, 10))
+    |> pair.map_second(list.take(_, 10))
   }
 
-  let gtfs =
-    gtfs
-    |> result.map(trains_stopping(_, at: stop_id))
-    |> result.map(
-      list.sort(_, by: fn(a, b) {
-        timestamp.compare(a.time, b.time) |> order.negate
-      }),
-    )
-    |> result.map(
-      list.fold(_, from: #([], []), with: fn(acc, update) {
-        let TrainStopping(trip:, time:, stop_id:) = update
-        let #(uptown_acc, downtown_acc) = acc
-        let text =
-          trip.route_id
-          <> ": "
-          <> time
-          |> timestamp.difference(timestamp.system_time(), _)
-          |> duration.to_seconds()
-          |> float.divide(60.0)
-          |> result.unwrap(0.0)
-          |> float.round
-          |> int.to_string
-          <> "min ("
-          <> time
-          |> timestamp.to_calendar(calendar.local_offset())
-          |> pair.second
-          |> string.inspect
-          <> ")"
-        case stop_id |> string.ends_with("N") {
-          True -> #([text, ..uptown_acc], downtown_acc)
-          False -> #(uptown_acc, [text, ..downtown_acc])
-        }
-      }),
-    )
-    |> result.map(pair.map_first(_, list.take(_, 10)))
-    |> result.map(pair.map_second(_, list.take(_, 10)))
-
-  let body = case gtfs {
+  let body = case data {
     Ok(#(uptown, downtown)) ->
       "<h1>Stopping at stop #"
       <> stop_id
@@ -212,6 +198,19 @@ fn fetch_gtfs_rt_bin(feed: GtfsRtFeed) -> Result(BitArray, httpc.HttpError) {
 
   use res <- result.try(httpc.send_bits(req))
   res.body |> Ok
+}
+
+fn fetch_gtfs(
+  feed feed: GtfsRtFeed,
+) -> Result(gtfs_rt_nyct.FeedMessage, FetchGtfsError) {
+  use bits <- result.try(fetch_gtfs_rt_bin(feed) |> result.map_error(HttpError))
+  protobin.parse_with_config(
+    from: bits,
+    using: gtfs_rt_nyct.feed_message_decoder(),
+    config: protobin.Config(ignore_groups: True),
+  )
+  |> result.map(fn(parsed) { parsed.value })
+  |> result.map_error(ParseError)
 }
 
 fn trains_stopping(
