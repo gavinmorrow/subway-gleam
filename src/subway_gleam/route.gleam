@@ -60,7 +60,9 @@ pub fn not_found(req: wisp.Request) -> wisp.Response {
   #(body, res)
 }
 
-pub fn stop(_req: wisp.Request, stop_id: StopId) -> wisp.Response {
+pub fn stop(req: wisp.Request, stop_id: StopId) -> wisp.Response {
+  use _req <- lustre_res(req)
+
   let data = {
     use feed <- result.try(
       gtfs_rt_feed_from_stop_id(stop_id)
@@ -87,16 +89,27 @@ pub fn stop(_req: wisp.Request, stop_id: StopId) -> wisp.Response {
 
   let body = case data {
     Ok(#(uptown, downtown)) ->
-      "<h1>Stopping at stop #"
-      <> stop_id
-      <> ":</h1><h2>Uptown</h2>"
-      <> uptown |> list.fold("", fn(acc, text) { acc <> "</br>" <> text })
-      <> "<br/><h2>Downtown</h2>"
-      <> downtown |> list.fold("", fn(acc, text) { acc <> "</br>" <> text })
-    Error(err) -> "Error: " <> string.inspect(err)
+      element.fragment([
+        html.h1([], [html.text("Stopping at stop #" <> stop_id <> ":")]),
+        html.h2([], [html.text("Uptown")]),
+        html.ul(
+          [],
+          uptown
+            |> list.map(html.text)
+            |> list.map(fn(text) { html.li([], [text]) }),
+        ),
+        html.h2([], [html.text("Downtown")]),
+        html.ul(
+          [],
+          downtown
+            |> list.map(html.text)
+            |> list.map(fn(text) { html.li([], [text]) }),
+        ),
+      ])
+    Error(err) -> html.p([], [html.text("Error: " <> string.inspect(err))])
   }
 
-  wisp.html_response(body, 200)
+  #(body, wisp.response(200))
 }
 
 type TrainStopping {
