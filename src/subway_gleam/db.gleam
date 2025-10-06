@@ -21,8 +21,9 @@ pub type TrainStopping {
   )
 }
 
-pub type StopId =
-  String
+pub type StopId {
+  StopId(String)
+}
 
 pub type GtfsRtFeed {
   ACESr
@@ -41,6 +42,16 @@ pub type FetchGtfsError {
   InvalidStopId(StopId)
 }
 
+pub fn stop_id_string(stop_id: StopId) -> String {
+  let StopId(id) = stop_id
+  id
+}
+
+// TODO: actually parse, return Result(StopId, ...)
+pub fn parse_stop_id(stop_id: String) -> StopId {
+  StopId(stop_id)
+}
+
 fn gtfs_rt_feed_path(feed: GtfsRtFeed) -> String {
   let name = case feed {
     ACESr -> "gtfs-ace"
@@ -56,7 +67,9 @@ fn gtfs_rt_feed_path(feed: GtfsRtFeed) -> String {
 }
 
 pub fn gtfs_rt_feed_from_stop_id(stop_id: StopId) -> Result(GtfsRtFeed, Nil) {
-  use #(route_id, stop_num) <- result.try(stop_id |> string.pop_grapheme)
+  use #(route_id, stop_num) <- result.try(
+    stop_id |> stop_id_string |> string.pop_grapheme,
+  )
   use stop_num <- result.try(
     stop_num
     |> string.slice(at_index: 0, length: 2)
@@ -117,7 +130,7 @@ pub fn trains_stopping(
   case entity.data {
     gtfs_rt_nyct.TripUpdate(trip:, stop_time_updates:) -> {
       let is_stop = fn(update: gtfs_rt_nyct.StopTimeUpdate) {
-        update.stop_id |> string.starts_with(stop_id)
+        update.stop_id |> string.starts_with(stop_id |> stop_id_string)
       }
 
       let stop = {
@@ -130,7 +143,8 @@ pub fn trains_stopping(
         let gtfs_rt_nyct.UnixTime(unix_secs) = unix
         let time = timestamp.from_unix_seconds(unix_secs)
 
-        TrainStopping(trip:, time:, stop_id: stop.stop_id) |> Ok
+        TrainStopping(trip:, time:, stop_id: stop.stop_id |> parse_stop_id)
+        |> Ok
       }
 
       case stop {
