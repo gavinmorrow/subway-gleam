@@ -41,8 +41,8 @@ pub type FetchGtfsError {
   InvalidStopId(StopId)
 }
 
-fn gtfs_rt_feed_name(feed: GtfsRtFeed) -> String {
-  case feed {
+fn gtfs_rt_feed_path(feed: GtfsRtFeed) -> String {
+  let name = case feed {
     ACESr -> "gtfs-ace"
     BDFMSf -> "gtfs-bdfm"
     G -> "gtfs-g"
@@ -52,10 +52,7 @@ fn gtfs_rt_feed_name(feed: GtfsRtFeed) -> String {
     S1234567 -> "gtfs"
     Si -> "gtfs-si"
   }
-}
-
-fn gtfs_rt_feed_path(feed: GtfsRtFeed) -> String {
-  "Dataservice/mtagtfsfeeds/nyct%2F" <> gtfs_rt_feed_name(feed)
+  "Dataservice/mtagtfsfeeds/nyct%2F" <> name
 }
 
 pub fn gtfs_rt_feed_from_stop_id(stop_id: StopId) -> Result(GtfsRtFeed, Nil) {
