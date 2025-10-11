@@ -9,7 +9,7 @@ import lustre/element
 import lustre/element/html
 import wisp
 
-import subway_gleam/db
+import subway_gleam/rt
 
 pub fn lustre_res(
   req: wisp.Request,
@@ -56,25 +56,25 @@ pub fn not_found(req: wisp.Request) -> wisp.Response {
 pub fn stop(req: wisp.Request, stop_id: String) -> wisp.Response {
   use _req <- lustre_res(req)
 
-  let stop_id = db.parse_stop_id(stop_id)
+  let stop_id = rt.parse_stop_id(stop_id)
 
   let data = {
     // TODO: don't parse new gtfs every request
     use feed <- result.try(
-      db.gtfs_rt_feed_from_stop_id(stop_id)
-      |> result.replace_error(db.InvalidStopId(stop_id)),
+      rt.gtfs_rt_feed_from_stop_id(stop_id)
+      |> result.replace_error(rt.InvalidStopId(stop_id)),
     )
-    use gtfs <- result.map(db.fetch_gtfs(feed:))
+    use gtfs <- result.map(rt.fetch_gtfs(feed:))
 
     gtfs
-    |> db.trains_stopping(at: stop_id)
+    |> rt.trains_stopping(at: stop_id)
     |> list.sort(by: fn(a, b) {
       timestamp.compare(a.time, b.time) |> order.negate
     })
     |> list.fold(from: #([], []), with: fn(acc, update) {
       let #(uptown_acc, downtown_acc) = acc
-      let text = db.describe_arrival(update)
-      case update.stop_id |> db.stop_id_string |> string.ends_with("N") {
+      let text = rt.describe_arrival(update)
+      case update.stop_id |> rt.stop_id_string |> string.ends_with("N") {
         True -> #([text, ..uptown_acc], downtown_acc)
         False -> #(uptown_acc, [text, ..downtown_acc])
       }
@@ -87,7 +87,7 @@ pub fn stop(req: wisp.Request, stop_id: String) -> wisp.Response {
     Ok(#(uptown, downtown)) ->
       element.fragment([
         html.h1([], [
-          html.text("Stopping at stop #" <> stop_id |> db.stop_id_string <> ":"),
+          html.text("Stopping at stop #" <> stop_id |> rt.stop_id_string <> ":"),
         ]),
         html.h2([], [html.text("Uptown")]),
         html.ul(
