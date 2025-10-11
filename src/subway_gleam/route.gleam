@@ -59,6 +59,7 @@ pub fn stop(req: wisp.Request, stop_id: String) -> wisp.Response {
   let stop_id = db.parse_stop_id(stop_id)
 
   let data = {
+    // TODO: don't parse new gtfs every request
     use feed <- result.try(
       db.gtfs_rt_feed_from_stop_id(stop_id)
       |> result.replace_error(db.InvalidStopId(stop_id)),
