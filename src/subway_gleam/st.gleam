@@ -1,9 +1,11 @@
 //// Work with the static GTFS data.
 
 import gleam/bool
+import gleam/erlang/charlist
 import gleam/http/request
 import gleam/httpc
 import gleam/int
+import gleam/list
 import gleam/option
 import gleam/pair
 import gleam/result
@@ -87,12 +89,12 @@ pub type Route {
 
 pub type FetchError {
   HttpError(httpc.HttpError)
+  UnzipError(Nil)
 }
 
 pub fn fetch(feed: Feed) -> Result(Schedule, FetchError) {
   use bits <- result.try(fetch_bin(feed) |> result.map_error(HttpError))
-  let files = ffi.unzip(bits)
-  echo files
+  use files <- result.try(ffi.unzip(bits) |> result.map_error(UnzipError))
   todo
 }
 

@@ -1,4 +1,8 @@
 import gleam/erlang/atom
+import gleam/erlang/charlist
+import gleam/list
+import gleam/pair
+import gleam/result
 
 /// Extracts all files from a zip archive.
 ///
@@ -8,8 +12,12 @@ import gleam/erlang/atom
 fn unzip_ffi(
   bits: BitArray,
   options: List(atom.Atom),
-) -> Result(List(#(String, BitArray)), String)
+) -> Result(List(#(charlist.Charlist, BitArray)), Nil)
 
-pub fn unzip(bits: BitArray) -> Result(List(#(String, BitArray)), String) {
+// TODO: actually figure out error type
+pub fn unzip(bits: BitArray) -> Result(List(#(String, BitArray)), Nil) {
   unzip_ffi(bits, [atom.create("memory")])
+  // Convert from List(#(Charlist, BitArray))
+  //           -> List(#(String, BitArray))
+  |> result.map(list.map(_, pair.map_first(_, charlist.to_string)))
 }
