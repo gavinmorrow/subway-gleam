@@ -47,4 +47,5 @@ gtfs_rt_nyct = { version = ">= 0.1.0 and < 1.0.0" }
 lustre = { version = ">= 5.3.5 and < 6.0.0" }
 mist = { version = ">= 5.0.3 and < 6.0.0" }
 protobin = { version = ">= 2.0.0 and < 3.0.0" }
+simplifile = { version = ">= 2.3.0 and < 3.0.0" }
 wisp = { version = ">= 2.0.0 and < 3.0.0" }
