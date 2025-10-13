@@ -13,16 +13,14 @@ import gleam/time/timestamp
 import gtfs_rt_nyct
 import protobin
 
+import subway_gleam/st
+
 pub type TrainStopping {
   TrainStopping(
     trip: gtfs_rt_nyct.TripDescriptor,
     time: timestamp.Timestamp,
-    stop_id: StopId,
+    stop_id: st.StopId,
   )
-}
-
-pub type StopId {
-  StopId(String)
 }
 
 pub type GtfsRtFeed {
@@ -39,17 +37,8 @@ pub type GtfsRtFeed {
 pub type FetchGtfsError {
   HttpError(httpc.HttpError)
   ParseError(protobin.ParseError)
-  InvalidStopId(StopId)
-}
-
-pub fn stop_id_string(stop_id: StopId) -> String {
-  let StopId(id) = stop_id
-  id
-}
-
-// TODO: actually parse, return Result(StopId, ...)
-pub fn parse_stop_id(stop_id: String) -> StopId {
-  StopId(stop_id)
+  InvalidStopId(String)
+  UnknownStop(st.StopId)
 }
 
 fn gtfs_rt_feed_path(feed: GtfsRtFeed) -> String {
@@ -66,34 +55,16 @@ fn gtfs_rt_feed_path(feed: GtfsRtFeed) -> String {
   "Dataservice/mtagtfsfeeds/nyct%2F" <> name
 }
 
-pub fn gtfs_rt_feed_from_stop_id(stop_id: StopId) -> Result(GtfsRtFeed, Nil) {
-  use #(route_id, stop_num) <- result.try(
-    stop_id |> stop_id_string |> string.pop_grapheme,
-  )
-  use stop_num <- result.try(
-    stop_num
-    |> string.slice(at_index: 0, length: 2)
-    |> int.parse,
-  )
-  case route_id {
-    "A" | "C" | "E" -> ACESr |> Ok
-    "B" | "D" | "F" | "M" -> BDFMSf |> Ok
-    "G" -> G |> Ok
-    "J" | "Z" -> JZ |> Ok
-    "N" | "Q" | "R" | "W" -> NQRW |> Ok
-    "L" -> L |> Ok
-    "1" | "2" | "3" | "4" | "5" | "6" | "7" -> S1234567 |> Ok
-
-    // In the GTFS, the Sf and Sir routes have the same prefix (S).
-    // The Sf gets stop numbers [1, 8] while the Sir gets [9, 31].
-    // The normal S gets the prefix 9, while Sr gets H (which it shares with
-    // both Far-Rockaway-bound and Rockaway-Park-bound A trains).
-    "H" -> ACESr |> Ok
-    "9" -> S1234567 |> Ok
-    "S" if stop_num < 9 -> BDFMSf |> Ok
-    "S" if stop_num >= 9 -> Si |> Ok
-
-    _ -> Error(Nil)
+pub fn gtfs_rt_feed_from_stop_id(stop_id: st.StopId) -> GtfsRtFeed {
+  case stop_id.route {
+    st.A | st.C | st.E | st.Sr -> ACESr
+    st.B | st.D | st.F | st.M | st.Sf -> BDFMSf
+    st.G -> G
+    st.J | st.Z -> JZ
+    st.N | st.Q | st.R | st.W -> NQRW
+    st.L -> L
+    st.N1 | st.N2 | st.N3 | st.N4 | st.N5 | st.N6 | st.N7 | st.S -> S1234567
+    st.Si -> Si
   }
 }
 
@@ -123,14 +94,17 @@ pub fn fetch_gtfs(
 
 pub fn trains_stopping(
   feed: gtfs_rt_nyct.FeedMessage,
-  at stop_id: StopId,
+  at stop_id: st.StopId,
 ) -> List(TrainStopping) {
   use acc, entity <- list.fold(over: feed.entity, from: [])
 
   case entity.data {
     gtfs_rt_nyct.TripUpdate(trip:, stop_time_updates:) -> {
       let is_stop = fn(update: gtfs_rt_nyct.StopTimeUpdate) {
-        update.stop_id |> string.starts_with(stop_id |> stop_id_string)
+        case st.parse_stop_id(update.stop_id) {
+          Error(Nil) -> False
+          Ok(id) -> id.route == stop_id.route && id.id == stop_id.id
+        }
       }
 
       let stop = {
@@ -143,7 +117,9 @@ pub fn trains_stopping(
         let gtfs_rt_nyct.UnixTime(unix_secs) = unix
         let time = timestamp.from_unix_seconds(unix_secs)
 
-        TrainStopping(trip:, time:, stop_id: stop.stop_id |> parse_stop_id)
+        use stop_id <- result.try(st.parse_stop_id(stop.stop_id))
+
+        TrainStopping(trip:, time:, stop_id:)
         |> Ok
       }
 

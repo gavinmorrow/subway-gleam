@@ -208,7 +208,7 @@ fn feed_path(feed: Feed) -> String {
   }
 }
 
-fn parse_stop_id(from str: String) -> Result(StopId, Nil) {
+pub fn parse_stop_id(from str: String) -> Result(StopId, Nil) {
   // TODO: using bytes instead of graphemes would be way more performant, but
   //       there's nothing in the gleam stdlib for it.
   use #(route_id, rest) <- result.try(string.pop_grapheme(str))
