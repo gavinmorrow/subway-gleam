@@ -1,15 +1,17 @@
 //// Work with the static GTFS data.
 
+import gleam/bit_array
 import gleam/bool
-import gleam/erlang/charlist
+import gleam/dict
+import gleam/float
 import gleam/http/request
 import gleam/httpc
 import gleam/int
 import gleam/list
 import gleam/option
-import gleam/pair
 import gleam/result
 import gleam/string
+import gsv
 import subway_gleam/internal/ffi
 
 pub type Feed {
@@ -89,13 +91,44 @@ pub type Route {
 
 pub type FetchError {
   HttpError(httpc.HttpError)
-  UnzipError(Nil)
+  UnzipError
+  InvalidUtf8
+  CsvError(gsv.Error)
+  MissingFile(name: String)
+  DecodeError(in_file: String)
 }
 
 pub fn fetch(feed: Feed) -> Result(Schedule, FetchError) {
   use bits <- result.try(fetch_bin(feed) |> result.map_error(HttpError))
-  use files <- result.try(ffi.unzip(bits) |> result.map_error(UnzipError))
-  todo
+  use files <- result.try(ffi.unzip(bits) |> result.replace_error(UnzipError))
+  let files = dict.from_list(files)
+  let files = {
+    use _file_name, file <- dict.map_values(files)
+    use file <- result.try(
+      bit_array.to_string(file) |> result.replace_error(InvalidUtf8),
+    )
+    gsv.to_dicts(file, separator: ",") |> result.map_error(CsvError)
+  }
+
+  let parse_file = fn(
+    name: String,
+    parse: fn(dict.Dict(String, String)) -> Result(a, Nil),
+  ) -> Result(List(a), FetchError) {
+    use rows <- result.try(
+      result.map(
+        files
+          |> dict.get(name)
+          |> result.replace_error(MissingFile(name))
+          |> result.flatten,
+        list.map(_, parse),
+      ),
+    )
+    result.all(rows) |> result.replace_error(DecodeError(name))
+  }
+
+  use stops <- result.try(parse_file("stops.txt", parse_stop))
+
+  Schedule(stops:) |> Ok
 }
 
 fn fetch_bin(feed: Feed) -> Result(BitArray, httpc.HttpError) {
@@ -114,6 +147,25 @@ fn feed_path(feed: Feed) -> String {
     Regular -> "gtfs_subway.zip"
     Supplemented -> "gtfs_supplemented.zip"
   }
+}
+
+fn parse_stop(data: dict.Dict(String, String)) -> Result(Stop, Nil) {
+  use id <- result.try(data |> dict.get("stop_id") |> result.try(parse_stop_id))
+  use name <- result.try(data |> dict.get("stop_name"))
+  use lat <- result.try(data |> dict.get("stop_lat") |> result.try(float.parse))
+  use lon <- result.try(data |> dict.get("stop_lon") |> result.try(float.parse))
+  let location_type =
+    data
+    |> dict.get("location_type")
+    |> result.try(int.parse)
+    |> option.from_result
+  let parent_station =
+    data
+    |> dict.get("parent_station")
+    |> result.try(parse_stop_id)
+    |> option.from_result
+
+  Stop(id:, name:, lat:, lon:, location_type:, parent_station:) |> Ok
 }
 
 fn parse_stop_id(from str: String) -> Result(StopId, Nil) {
