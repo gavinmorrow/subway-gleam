@@ -3,12 +3,15 @@
 import gleam/bit_array
 import gleam/bool
 import gleam/dict
+import gleam/dynamic
+import gleam/dynamic/decode
 import gleam/float
 import gleam/http/request
 import gleam/httpc
 import gleam/int
 import gleam/list
 import gleam/option
+import gleam/pair
 import gleam/result
 import gleam/string
 import gsv
@@ -41,8 +44,50 @@ pub type Stop {
   )
 }
 
+fn stop_decoder() -> decode.Decoder(Stop) {
+  let parse_str_field = fn(
+    name: String,
+    parse: fn(String) -> Result(a, Nil),
+    default: a,
+  ) -> decode.Decoder(a) {
+    use str <- decode.then(decode.string)
+    parse(str)
+    |> result.map(decode.success)
+    |> result.unwrap(or: decode.failure(default, name))
+  }
+
+  use id <- decode.field("stop_id", stop_id_decoder())
+  use name <- decode.field("stop_name", decode.string)
+  use lat <- decode.field("stop_lat", parse_str_field("lat", float.parse, 0.0))
+  use lon <- decode.field("stop_lon", parse_str_field("lon", float.parse, 0.0))
+  use location_type <- decode.optional_field(
+    "location_type",
+    option.None,
+    parse_str_field("location_type", int.parse, 0) |> decode.map(option.Some),
+  )
+  use parent_station <- decode.optional_field(
+    "parent_station",
+    option.None,
+    stop_id_decoder() |> decode.map(option.Some),
+  )
+  decode.success(Stop(id:, name:, lat:, lon:, location_type:, parent_station:))
+}
+
 pub type StopId {
   StopId(route: Route, id: Int, direction: option.Option(Direction))
+}
+
+const stop_id_default = StopId(route: A, id: 0, direction: option.None)
+
+fn stop_id_decoder() -> decode.Decoder(StopId) {
+  use stop_id <- decode.then(decode.string)
+  case parse_stop_id(from: stop_id) {
+    Error(Nil) -> {
+      echo "could not decode stop id " <> stop_id
+      decode.failure(stop_id_default, "StopId")
+    }
+    Ok(stop_id) -> decode.success(stop_id)
+  }
 }
 
 pub type Direction {
@@ -86,7 +131,7 @@ pub type Route {
   Sr
   Sf
 
-  Sir
+  Si
 }
 
 pub type FetchError {
@@ -95,11 +140,10 @@ pub type FetchError {
   InvalidUtf8
   CsvError(gsv.Error)
   MissingFile(name: String)
-  DecodeError(in_file: String)
+  DecodeError(in_file: String, error: List(decode.DecodeError))
 }
 
-pub fn fetch(feed: Feed) -> Result(Schedule, FetchError) {
-  use bits <- result.try(fetch_bin(feed) |> result.map_error(HttpError))
+pub fn parse(bits: BitArray) -> Result(Schedule, FetchError) {
   use files <- result.try(ffi.unzip(bits) |> result.replace_error(UnzipError))
   let files = dict.from_list(files)
   let files = {
@@ -107,31 +151,46 @@ pub fn fetch(feed: Feed) -> Result(Schedule, FetchError) {
     use file <- result.try(
       bit_array.to_string(file) |> result.replace_error(InvalidUtf8),
     )
-    gsv.to_dicts(file, separator: ",") |> result.map_error(CsvError)
+    use rows <- result.map(
+      gsv.to_dicts(file, separator: ",")
+      |> result.map_error(CsvError),
+    )
+
+    // Transform into List(dynamic.Dynamic)
+    list.map(rows, fn(row) {
+      row
+      |> dict.to_list
+      |> list.map(fn(kv) {
+        kv
+        |> pair.map_first(dynamic.string)
+        |> pair.map_second(dynamic.string)
+      })
+      |> dynamic.properties
+    })
   }
 
-  let parse_file = fn(
-    name: String,
-    parse: fn(dict.Dict(String, String)) -> Result(a, Nil),
-  ) -> Result(List(a), FetchError) {
+  let parse_file = fn(name: String, decoder: decode.Decoder(a)) -> Result(
+    List(a),
+    FetchError,
+  ) {
     use rows <- result.try(
       result.map(
         files
           |> dict.get(name)
           |> result.replace_error(MissingFile(name))
           |> result.flatten,
-        list.map(_, parse),
+        list.map(_, decode.run(_, decoder)),
       ),
     )
-    result.all(rows) |> result.replace_error(DecodeError(name))
+    result.all(rows) |> result.map_error(DecodeError(name, _))
   }
 
-  use stops <- result.try(parse_file("stops.txt", parse_stop))
+  use stops <- result.try(parse_file("stops.txt", stop_decoder()))
 
   Schedule(stops:) |> Ok
 }
 
-fn fetch_bin(feed: Feed) -> Result(BitArray, httpc.HttpError) {
+pub fn fetch_bin(feed: Feed) -> Result(BitArray, httpc.HttpError) {
   let req: request.Request(BitArray) =
     request.new()
     |> request.set_host("rrgtfsfeeds.s3.amazonaws.com")
@@ -149,25 +208,6 @@ fn feed_path(feed: Feed) -> String {
   }
 }
 
-fn parse_stop(data: dict.Dict(String, String)) -> Result(Stop, Nil) {
-  use id <- result.try(data |> dict.get("stop_id") |> result.try(parse_stop_id))
-  use name <- result.try(data |> dict.get("stop_name"))
-  use lat <- result.try(data |> dict.get("stop_lat") |> result.try(float.parse))
-  use lon <- result.try(data |> dict.get("stop_lon") |> result.try(float.parse))
-  let location_type =
-    data
-    |> dict.get("location_type")
-    |> result.try(int.parse)
-    |> option.from_result
-  let parent_station =
-    data
-    |> dict.get("parent_station")
-    |> result.try(parse_stop_id)
-    |> option.from_result
-
-  Stop(id:, name:, lat:, lon:, location_type:, parent_station:) |> Ok
-}
-
 fn parse_stop_id(from str: String) -> Result(StopId, Nil) {
   // TODO: using bytes instead of graphemes would be way more performant, but
   //       there's nothing in the gleam stdlib for it.
@@ -182,41 +222,56 @@ fn parse_stop_id(from str: String) -> Result(StopId, Nil) {
   use <- bool.guard(when: !string.is_empty(rest), return: Error(Nil))
 
   // Parse each part
-  use route <- result.try(parse_route(route_id))
   use id <- result.try(int.parse(id_tens <> id_ones))
+  // Route needs to come after id because it requires an id
+  use route <- result.try(parse_route(from: route_id, at: id))
   use direction <- result.try(parse_optional_direction(direction))
 
   StopId(route:, id:, direction:) |> Ok
 }
 
-fn parse_route(from str: String) -> Result(Route, Nil) {
+/// The stop number/`id` is needed b/c the Si and Sf share an identifier ("S"),
+/// and the only way to differentiate is via the stop number.
+fn parse_route(from str: String, at id: Int) -> Result(Route, Nil) {
   case str {
+    "1" -> Ok(N1)
+    "2" -> Ok(N2)
+    "3" -> Ok(N3)
+    "4" -> Ok(N4)
+    "5" -> Ok(N5)
+    "6" -> Ok(N6)
+    "7" -> Ok(N7)
+
     "A" -> Ok(A)
-    "B" -> Ok(B)
     "C" -> Ok(C)
-    "D" -> Ok(D)
     "E" -> Ok(E)
+
+    "B" -> Ok(B)
+    "D" -> Ok(D)
     "F" -> Ok(F)
-    "G" -> Ok(G)
-    "J" -> Ok(J)
-    "L" -> Ok(L)
     "M" -> Ok(M)
+
     "N" -> Ok(N)
-    "N1" -> Ok(N1)
-    "N2" -> Ok(N2)
-    "N3" -> Ok(N3)
-    "N4" -> Ok(N4)
-    "N5" -> Ok(N5)
-    "N6" -> Ok(N6)
-    "N7" -> Ok(N7)
     "Q" -> Ok(Q)
     "R" -> Ok(R)
-    "S" -> Ok(S)
-    "Sf" -> Ok(Sf)
-    "Sir" -> Ok(Sir)
-    "Sr" -> Ok(Sr)
     "W" -> Ok(W)
+
+    "G" -> Ok(G)
+
+    "J" -> Ok(J)
     "Z" -> Ok(Z)
+
+    "L" -> Ok(L)
+
+    // In the GTFS, the Sf and Si routes have the same prefix (S).
+    // The Sf gets stop numbers [1, 8] while the Sir gets [9, 31].
+    // The normal S gets the prefix 9, while Sr gets H (which it shares with
+    // both Far-Rockaway-bound and Rockaway-Park-bound A trains).
+    "9" -> Ok(S)
+    "H" -> Ok(Sr)
+    "S" if id < 9 -> Sf |> Ok
+    "S" if id >= 9 -> Si |> Ok
+
     _ -> Error(Nil)
   }
 }
