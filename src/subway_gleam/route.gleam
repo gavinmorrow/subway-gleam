@@ -107,7 +107,7 @@ pub fn stop(
     Ok(#(stop, #(uptown, downtown))) ->
       element.fragment([
         html.h1([], [
-          html.text("Stopping at " <> stop.name),
+          html.text(stop.name),
         ]),
         html.h2([], [html.text("Uptown")]),
         html.ul(
