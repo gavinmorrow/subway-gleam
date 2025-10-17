@@ -6,6 +6,7 @@ import gleam/pair
 import gleam/result
 import gleam/string
 import gleam/time/timestamp
+import lustre/attribute
 import lustre/element
 import lustre/element/html
 import subway_gleam/st
@@ -96,6 +97,10 @@ pub fn stop(
   let body = case data {
     Ok(#(stop, #(uptown, downtown))) ->
       element.fragment([
+        html.link([
+          attribute.rel("stylesheet"),
+          attribute.href("/static/style.css"),
+        ]),
         html.h1([], [
           html.text(stop.name),
         ]),
