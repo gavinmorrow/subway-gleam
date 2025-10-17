@@ -31,7 +31,8 @@ pub fn main() -> Nil {
 }
 
 fn handler(state: state.State, req: wisp.Request) -> wisp.Response {
-  use req <- route.middleware(req)
+  use <- wisp.rescue_crashes
+  use req <- wisp.csrf_known_header_protection(req)
 
   case wisp.path_segments(req) {
     [] -> route.index(req)

@@ -28,16 +28,6 @@ pub fn lustre_res(
   )
 }
 
-pub fn middleware(
-  req: wisp.Request,
-  handle_request: fn(wisp.Request) -> wisp.Response,
-) -> wisp.Response {
-  use <- wisp.rescue_crashes
-  use req <- wisp.csrf_known_header_protection(req)
-
-  handle_request(req)
-}
-
 pub fn index(req: wisp.Request) -> wisp.Response {
   use _req <- lustre_res(req)
 
