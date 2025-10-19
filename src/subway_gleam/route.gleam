@@ -1,4 +1,3 @@
-import gleam/http/response
 import gleam/list
 import gleam/option
 import gleam/order
@@ -6,45 +5,30 @@ import gleam/pair
 import gleam/result
 import gleam/string
 import gleam/time/timestamp
-import lustre/attribute
-import lustre/element
 import lustre/element/html
 import subway_gleam/st
 import wisp
 
+import subway_gleam/lustre_middleware.{Body, lustre_res}
 import subway_gleam/rt
 import subway_gleam/state
-
-pub fn lustre_res(
-  req: wisp.Request,
-  handle_request: fn(wisp.Request) -> #(element.Element(msg), wisp.Response),
-) -> wisp.Response {
-  let #(html, res) = handle_request(req)
-
-  response.set_body(
-    res,
-    html
-      |> element.to_document_string
-      |> wisp.Text,
-  )
-}
 
 pub fn index(req: wisp.Request) -> wisp.Response {
   use _req <- lustre_res(req)
 
-  let body = html.p([], [html.text("subways! yay!")])
+  let body = [html.p([], [html.text("subways! yay!")])]
   let res = wisp.response(200)
 
-  #(body, res)
+  #(Body(body:), res)
 }
 
 pub fn not_found(req: wisp.Request) -> wisp.Response {
   use _req <- lustre_res(req)
 
-  let body = html.p([], [html.text("404 not found :[")])
+  let body = [html.p([], [html.text("404 not found :[")])]
   let res = wisp.response(404)
 
-  #(body, res)
+  #(Body(body:), res)
 }
 
 pub fn stop(
@@ -95,32 +79,27 @@ pub fn stop(
   }
 
   let body = case data {
-    Ok(#(stop, #(uptown, downtown))) ->
-      element.fragment([
-        html.link([
-          attribute.rel("stylesheet"),
-          attribute.href("/static/style.css"),
-        ]),
-        html.h1([], [
-          html.text(stop.name),
-        ]),
-        html.h2([], [html.text("Uptown")]),
-        html.ul(
-          [],
-          uptown
-            |> list.map(html.text)
-            |> list.map(fn(text) { html.li([], [text]) }),
-        ),
-        html.h2([], [html.text("Downtown")]),
-        html.ul(
-          [],
-          downtown
-            |> list.map(html.text)
-            |> list.map(fn(text) { html.li([], [text]) }),
-        ),
-      ])
-    Error(err) -> html.p([], [html.text("Error: " <> string.inspect(err))])
+    Ok(#(stop, #(uptown, downtown))) -> [
+      html.h1([], [
+        html.text(stop.name),
+      ]),
+      html.h2([], [html.text("Uptown")]),
+      html.ul(
+        [],
+        uptown
+          |> list.map(html.text)
+          |> list.map(fn(text) { html.li([], [text]) }),
+      ),
+      html.h2([], [html.text("Downtown")]),
+      html.ul(
+        [],
+        downtown
+          |> list.map(html.text)
+          |> list.map(fn(text) { html.li([], [text]) }),
+      ),
+    ]
+    Error(err) -> [html.p([], [html.text("Error: " <> string.inspect(err))])]
   }
 
-  #(body, wisp.response(200))
+  #(Body(body:), wisp.response(200))
 }
