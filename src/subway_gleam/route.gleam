@@ -9,7 +9,7 @@ import lustre/element/html
 import subway_gleam/st
 import wisp
 
-import subway_gleam/lustre_middleware.{Body, lustre_res}
+import subway_gleam/lustre_middleware.{Body, Document, lustre_res}
 import subway_gleam/rt
 import subway_gleam/state
 
@@ -78,6 +78,11 @@ pub fn stop(
     )
   }
 
+  let head = case data {
+    Ok(#(stop, _)) -> [html.title([], "Trains at " <> stop.name)]
+    Error(_) -> [html.title([], "Error!")]
+  }
+
   let body = case data {
     Ok(#(stop, #(uptown, downtown))) -> [
       html.h1([], [
@@ -101,5 +106,5 @@ pub fn stop(
     Error(err) -> [html.p([], [html.text("Error: " <> string.inspect(err))])]
   }
 
-  #(Body(body:), wisp.response(200))
+  #(Document(head:, body:), wisp.response(200))
 }
