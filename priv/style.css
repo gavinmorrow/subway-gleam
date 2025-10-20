@@ -1,0 +1,41 @@
+:root {
+  --color-bg-0: oklch(0.1 0.05 265.55);
+  --color-bg-1: oklch(from var(--color-bg-0) 0.2 c h);
+  --color-text: #eee;
+}
+
+html,
+body {
+  background-color: var(--color-bg-0);
+  color: var(--color-text);
+}
+
+.arrival-list {
+  list-style: none;
+  padding: 0;
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    background-color: var(--color-bg-1);
+    --padding: 0.5em;
+    --margin: calc(var(--padding) * 2 / 3);
+    padding: var(--padding);
+    margin: var(--margin) 0;
+    border-radius: var(--padding);
+
+    * {
+      /* Actual alignment of text vertically!! */
+      text-box: trim-both cap alphabetic;
+      @supports not (text-box: trim-both cap alphabetic) {
+        /* TODO: this is kinda hacky and probably font-dependent */
+        /* Does seem to be pretty close though */
+        line-height: 1;
+        margin-top: -0.05em;
+        margin-bottom: -0.25em;
+      }
+    }
+  }
+}

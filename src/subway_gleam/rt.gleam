@@ -1,14 +1,8 @@
-import gleam/float
 import gleam/http/request
 import gleam/httpc
-import gleam/int
 import gleam/list
 import gleam/option
-import gleam/pair
 import gleam/result
-import gleam/string
-import gleam/time/calendar
-import gleam/time/duration
 import gleam/time/timestamp
 import gtfs_rt_nyct
 import protobin
@@ -130,24 +124,4 @@ pub fn trains_stopping(
     }
     _ -> acc
   }
-}
-
-pub fn describe_arrival(update: TrainStopping) -> String {
-  let TrainStopping(trip:, time:, stop_id: _) = update
-
-  trip.route_id
-  <> ": "
-  <> time
-  |> timestamp.difference(timestamp.system_time(), _)
-  |> duration.to_seconds()
-  |> float.divide(60.0)
-  |> result.unwrap(0.0)
-  |> float.round
-  |> int.to_string
-  <> "min ("
-  <> time
-  |> timestamp.to_calendar(calendar.local_offset())
-  |> pair.second
-  |> string.inspect
-  <> ")"
 }

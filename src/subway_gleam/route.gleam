@@ -1,10 +1,15 @@
+import gleam/float
+import gleam/int
 import gleam/list
 import gleam/option
 import gleam/order
 import gleam/pair
 import gleam/result
 import gleam/string
+import gleam/time/duration
 import gleam/time/timestamp
+import lustre/attribute
+import lustre/element
 import lustre/element/html
 import subway_gleam/st
 import wisp
@@ -62,15 +67,15 @@ pub fn stop(
         })
         |> list.fold(from: #([], []), with: fn(acc, update) {
           let #(uptown_acc, downtown_acc) = acc
-          let text = rt.describe_arrival(update)
+          let li = arrival_li(update)
           case update.stop_id.direction {
             // Treat no direction as uptown
             // TODO: figure out what should be done here. is it even be possible?
             option.Some(st.North) | option.None -> #(
-              [text, ..uptown_acc],
+              [li, ..uptown_acc],
               downtown_acc,
             )
-            option.Some(st.South) -> #(uptown_acc, [text, ..downtown_acc])
+            option.Some(st.South) -> #(uptown_acc, [li, ..downtown_acc])
           }
         })
         |> pair.map_first(list.take(_, 10))
@@ -90,21 +95,47 @@ pub fn stop(
       ]),
       html.h2([], [html.text("Uptown")]),
       html.ul(
-        [],
+        [attribute.class("arrival-list")],
         uptown
-          |> list.map(html.text)
-          |> list.map(fn(text) { html.li([], [text]) }),
+          |> list.map(html.li([], _)),
       ),
       html.h2([], [html.text("Downtown")]),
       html.ul(
-        [],
+        [attribute.class("arrival-list")],
         downtown
-          |> list.map(html.text)
-          |> list.map(fn(text) { html.li([], [text]) }),
+          |> list.map(html.li([], _)),
       ),
     ]
     Error(err) -> [html.p([], [html.text("Error: " <> string.inspect(err))])]
   }
 
   #(Document(head:, body:), wisp.response(200))
+}
+
+fn arrival_li(update: rt.TrainStopping) -> List(element.Element(msg)) {
+  let rt.TrainStopping(trip:, time:, stop_id: _) = update
+  [
+    route_bullet(trip.route_id),
+    html.span([], [
+      html.text(
+        time
+        |> min_from_now
+        |> int.to_string
+        <> "min",
+      ),
+    ]),
+  ]
+}
+
+fn route_bullet(route_id: String) -> element.Element(msg) {
+  html.span([attribute.class("route-bullet")], [html.text(route_id)])
+}
+
+fn min_from_now(time: timestamp.Timestamp) -> Int {
+  time
+  |> timestamp.difference(timestamp.system_time(), _)
+  |> duration.to_seconds()
+  |> float.divide(60.0)
+  |> result.unwrap(0.0)
+  |> float.round
 }
