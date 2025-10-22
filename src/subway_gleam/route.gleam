@@ -1,3 +1,4 @@
+import gleam/dict
 import gleam/float
 import gleam/int
 import gleam/list
@@ -74,7 +75,7 @@ pub fn stop(
         })
         |> list.fold(from: #([], []), with: fn(acc, update) {
           let #(uptown_acc, downtown_acc) = acc
-          let li = arrival_li(update)
+          let li = arrival_li(update, state.schedule.trips)
           case update.stop_id.direction {
             // Treat no direction as uptown
             // TODO: figure out what should be done here. is it even be possible?
@@ -119,10 +120,26 @@ pub fn stop(
   #(Document(head:, body:), wisp.response(200))
 }
 
-fn arrival_li(update: rt.TrainStopping) -> List(element.Element(msg)) {
+fn arrival_li(
+  update: rt.TrainStopping,
+  trips: st.Trips,
+) -> List(element.Element(msg)) {
   let rt.TrainStopping(trip:, time:, stop_id: _) = update
+
+  let headsign = {
+    use shape_id <- result.try(
+      trip.trip_id
+      |> string.split(on: "_")
+      |> list.last
+      |> result.map(st.ShapeId),
+    )
+    use headsign <- result.map(trips.headsigns |> dict.get(shape_id))
+    html.span([], [html.text(headsign)])
+  }
+
   [
     route_bullet(trip.route_id),
+    headsign |> result.unwrap(or: element.none()),
     html.span([], [
       html.text(
         time
