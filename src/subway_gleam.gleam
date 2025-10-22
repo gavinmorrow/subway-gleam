@@ -1,6 +1,7 @@
 import gleam/erlang/process
 import gleam/option
 import mist
+import simplifile
 import wisp
 import wisp/wisp_mist
 
@@ -13,25 +14,25 @@ pub fn main() -> Nil {
   let assert Ok(schedule) = {
     // TODO: actually fetch from internet, use `st.fetch_bin()`
     // Haven't done this yet b/c it wastes internet in prototyping
-    // let assert Ok(bits) = simplifile.read_bits("./gtfs_subway.zip")
-    // st.parse(bits)
-    let id = st.StopId(route: st.N6, id: 35, direction: _)
-    let stop = fn(id, parent) {
-      st.Stop(
-        id:,
-        name: "14 St-Union Sq",
-        lat: 0.0,
-        lon: 0.0,
-        location_type: option.None,
-        parent_station: parent,
-      )
-    }
-    st.Schedule([
-      stop(id(option.None), option.None),
-      stop(id(option.Some(st.North)), option.Some(id(option.None))),
-      stop(id(option.Some(st.South)), option.Some(id(option.None))),
-    ])
-    |> Ok
+    let assert Ok(bits) = simplifile.read_bits("./gtfs_subway.zip")
+    st.parse(bits)
+    // let id = st.StopId(route: st.N6, id: 35, direction: _)
+    // let stop = fn(id, parent) {
+    //   st.Stop(
+    //     id:,
+    //     name: "14 St-Union Sq",
+    //     lat: 0.0,
+    //     lon: 0.0,
+    //     location_type: option.None,
+    //     parent_station: parent,
+    //   )
+    // }
+    // st.Schedule([
+    //   stop(id(option.None), option.None),
+    //   stop(id(option.Some(st.North)), option.Some(id(option.None))),
+    //   stop(id(option.Some(st.South)), option.Some(id(option.None))),
+    // ])
+    // |> Ok
   }
   let state = state.State(priv_dir:, schedule:)
 

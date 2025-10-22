@@ -15,7 +15,9 @@ import gleam/pair
 import gleam/result
 import gleam/string
 import gsv
+
 import subway_gleam/internal/ffi
+import subway_gleam/internal/util
 
 pub type Feed {
   /// This file represents the "normal" subway schedule and does not include
@@ -30,7 +32,7 @@ pub type Feed {
 }
 
 pub type Schedule {
-  Schedule(stops: List(Stop))
+  Schedule(stops: List(Stop), trips: Trips)
 }
 
 pub type FetchError {
@@ -72,21 +74,22 @@ pub fn parse(bits: BitArray) -> Result(Schedule, FetchError) {
     List(a),
     FetchError,
   ) {
-    use rows <- result.try(
-      result.map(
-        files
-          |> dict.get(name)
-          |> result.replace_error(MissingFile(name))
-          |> result.flatten,
-        list.map(_, decode.run(_, decoder)),
-      ),
+    use file <- result.try(
+      files
+      |> dict.get(name)
+      |> result.replace_error(MissingFile(name))
+      |> result.flatten,
     )
+    let rows = list.map(file, decode.run(_, decoder))
     result.all(rows) |> result.map_error(DecodeError(name, _))
   }
 
+  // TODO: reverse order
+  use trips <- result.try(parse_file("trips.txt", trip_decoder()))
+  let trips = trips_from_rows(trips)
   use stops <- result.try(parse_file("stops.txt", stop_decoder()))
 
-  Schedule(stops:) |> Ok
+  Schedule(stops:, trips:) |> Ok
 }
 
 pub fn fetch_bin(feed: Feed) -> Result(BitArray, httpc.HttpError) {
@@ -119,25 +122,21 @@ pub type Stop {
 }
 
 fn stop_decoder() -> decode.Decoder(Stop) {
-  let parse_str_field = fn(
-    name: String,
-    parse: fn(String) -> Result(a, Nil),
-    default: a,
-  ) -> decode.Decoder(a) {
-    use str <- decode.then(decode.string)
-    parse(str)
-    |> result.map(decode.success)
-    |> result.unwrap(or: decode.failure(default, name))
-  }
-
   use id <- decode.field("stop_id", stop_id_decoder())
   use name <- decode.field("stop_name", decode.string)
-  use lat <- decode.field("stop_lat", parse_str_field("lat", float.parse, 0.0))
-  use lon <- decode.field("stop_lon", parse_str_field("lon", float.parse, 0.0))
+  use lat <- decode.field(
+    "stop_lat",
+    util.decode_parse_str_field("lat", float.parse, 0.0),
+  )
+  use lon <- decode.field(
+    "stop_lon",
+    util.decode_parse_str_field("lon", float.parse, 0.0),
+  )
   use location_type <- decode.optional_field(
     "location_type",
     option.None,
-    parse_str_field("location_type", int.parse, 0) |> decode.map(option.Some),
+    util.decode_parse_str_field("location_type", int.parse, 0)
+      |> decode.map(option.Some),
   )
   use parent_station <- decode.optional_field(
     "parent_station",
@@ -285,4 +284,62 @@ fn parse_optional_direction(
     "" -> Ok(option.None)
     _ -> Error(Nil)
   }
+}
+
+pub type Trips {
+  Trips(headsigns: dict.Dict(ShapeId, String))
+}
+
+fn trips_from_rows(rows: List(Trip)) -> Trips {
+  let headsigns =
+    list.fold(over: rows, from: dict.new(), with: fn(headsigns, trip) {
+      let shape_id_from_trip_id =
+        string.split(trip.id, on: "_") |> list.last |> result.map(ShapeId)
+      let shape_id = case trip.shape_id, shape_id_from_trip_id {
+        option.Some(trip_shape_id), Ok(shape_id_from_trip_id) -> {
+          // TODO: get rid of assert
+          assert trip_shape_id == shape_id_from_trip_id
+          trip_shape_id
+        }
+        option.Some(shape_id), Error(Nil) -> shape_id
+        option.None, Ok(shape_id) -> shape_id
+        // TODO: get rid of panic
+        option.None, Error(Nil) -> panic as "no shape id"
+      }
+      case dict.get(headsigns, shape_id) {
+        Error(Nil) ->
+          dict.insert(into: headsigns, for: shape_id, insert: trip.headsign)
+        Ok(headsign) -> {
+          // TODO: get rid of assert
+          assert headsign == trip.headsign
+          headsigns
+        }
+      }
+    })
+  Trips(headsigns:)
+}
+
+/// Intended for when parsing the raw rows, before parsing `Trips`
+type Trip {
+  Trip(id: String, headsign: String, shape_id: option.Option(ShapeId))
+}
+
+fn trip_decoder() -> decode.Decoder(Trip) {
+  use id <- decode.field("trip_id", decode.string)
+  use headsign <- decode.field("trip_headsign", decode.string)
+  use shape_id <- decode.optional_field(
+    "shape_id",
+    option.None,
+    shape_id_decoder() |> decode.map(option.Some),
+  )
+  decode.success(Trip(id:, headsign:, shape_id:))
+}
+
+pub type ShapeId {
+  ShapeId(String)
+}
+
+fn shape_id_decoder() -> decode.Decoder(ShapeId) {
+  use shape_id <- decode.then(decode.string)
+  ShapeId(shape_id) |> decode.success
 }
