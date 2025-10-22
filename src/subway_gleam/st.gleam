@@ -33,6 +33,80 @@ pub type Schedule {
   Schedule(stops: List(Stop))
 }
 
+pub type FetchError {
+  HttpError(httpc.HttpError)
+  UnzipError
+  InvalidUtf8
+  CsvError(gsv.Error)
+  MissingFile(name: String)
+  DecodeError(in_file: String, error: List(decode.DecodeError))
+}
+
+pub fn parse(bits: BitArray) -> Result(Schedule, FetchError) {
+  use files <- result.try(ffi.unzip(bits) |> result.replace_error(UnzipError))
+  let files = dict.from_list(files)
+  let files = {
+    use _file_name, file <- dict.map_values(files)
+    use file <- result.try(
+      bit_array.to_string(file) |> result.replace_error(InvalidUtf8),
+    )
+    use rows <- result.map(
+      gsv.to_dicts(file, separator: ",")
+      |> result.map_error(CsvError),
+    )
+
+    // Transform into List(dynamic.Dynamic)
+    list.map(rows, fn(row) {
+      row
+      |> dict.to_list
+      |> list.map(fn(kv) {
+        kv
+        |> pair.map_first(dynamic.string)
+        |> pair.map_second(dynamic.string)
+      })
+      |> dynamic.properties
+    })
+  }
+
+  let parse_file = fn(name: String, decoder: decode.Decoder(a)) -> Result(
+    List(a),
+    FetchError,
+  ) {
+    use rows <- result.try(
+      result.map(
+        files
+          |> dict.get(name)
+          |> result.replace_error(MissingFile(name))
+          |> result.flatten,
+        list.map(_, decode.run(_, decoder)),
+      ),
+    )
+    result.all(rows) |> result.map_error(DecodeError(name, _))
+  }
+
+  use stops <- result.try(parse_file("stops.txt", stop_decoder()))
+
+  Schedule(stops:) |> Ok
+}
+
+pub fn fetch_bin(feed: Feed) -> Result(BitArray, httpc.HttpError) {
+  let req: request.Request(BitArray) =
+    request.new()
+    |> request.set_host("rrgtfsfeeds.s3.amazonaws.com")
+    |> request.set_path(feed_path(feed))
+    |> request.set_body(<<>>)
+
+  use res <- result.try(httpc.send_bits(req))
+  res.body |> Ok
+}
+
+fn feed_path(feed: Feed) -> String {
+  case feed {
+    Regular -> "gtfs_subway.zip"
+    Supplemented -> "gtfs_supplemented.zip"
+  }
+}
+
 pub type Stop {
   Stop(
     id: StopId,
@@ -132,80 +206,6 @@ pub type Route {
   Sf
 
   Si
-}
-
-pub type FetchError {
-  HttpError(httpc.HttpError)
-  UnzipError
-  InvalidUtf8
-  CsvError(gsv.Error)
-  MissingFile(name: String)
-  DecodeError(in_file: String, error: List(decode.DecodeError))
-}
-
-pub fn parse(bits: BitArray) -> Result(Schedule, FetchError) {
-  use files <- result.try(ffi.unzip(bits) |> result.replace_error(UnzipError))
-  let files = dict.from_list(files)
-  let files = {
-    use _file_name, file <- dict.map_values(files)
-    use file <- result.try(
-      bit_array.to_string(file) |> result.replace_error(InvalidUtf8),
-    )
-    use rows <- result.map(
-      gsv.to_dicts(file, separator: ",")
-      |> result.map_error(CsvError),
-    )
-
-    // Transform into List(dynamic.Dynamic)
-    list.map(rows, fn(row) {
-      row
-      |> dict.to_list
-      |> list.map(fn(kv) {
-        kv
-        |> pair.map_first(dynamic.string)
-        |> pair.map_second(dynamic.string)
-      })
-      |> dynamic.properties
-    })
-  }
-
-  let parse_file = fn(name: String, decoder: decode.Decoder(a)) -> Result(
-    List(a),
-    FetchError,
-  ) {
-    use rows <- result.try(
-      result.map(
-        files
-          |> dict.get(name)
-          |> result.replace_error(MissingFile(name))
-          |> result.flatten,
-        list.map(_, decode.run(_, decoder)),
-      ),
-    )
-    result.all(rows) |> result.map_error(DecodeError(name, _))
-  }
-
-  use stops <- result.try(parse_file("stops.txt", stop_decoder()))
-
-  Schedule(stops:) |> Ok
-}
-
-pub fn fetch_bin(feed: Feed) -> Result(BitArray, httpc.HttpError) {
-  let req: request.Request(BitArray) =
-    request.new()
-    |> request.set_host("rrgtfsfeeds.s3.amazonaws.com")
-    |> request.set_path(feed_path(feed))
-    |> request.set_body(<<>>)
-
-  use res <- result.try(httpc.send_bits(req))
-  res.body |> Ok
-}
-
-fn feed_path(feed: Feed) -> String {
-  case feed {
-    Regular -> "gtfs_subway.zip"
-    Supplemented -> "gtfs_supplemented.zip"
-  }
 }
 
 pub fn parse_stop_id(from str: String) -> Result(StopId, Nil) {
