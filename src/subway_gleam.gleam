@@ -1,7 +1,10 @@
 import gleam/erlang/process
 import gleam/option
+import gleam/otp/actor
 import mist
+import repeatedly
 import simplifile
+import subway_gleam/rt
 import wisp
 import wisp/wisp_mist
 
@@ -34,7 +37,12 @@ pub fn main() -> Nil {
     // ])
     // |> Ok
   }
-  let state = state.State(priv_dir:, schedule:)
+  let assert Ok(rt_actor) = state.rt_actor(feed: rt.S1234567)
+  let state = state.State(priv_dir:, schedule:, rt_actor:)
+
+  repeatedly.call(10 * 1000, Nil, fn(_state, _i) {
+    actor.send(state.rt_actor.data, state.Update)
+  })
 
   wisp.configure_logger()
 

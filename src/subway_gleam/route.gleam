@@ -4,6 +4,7 @@ import gleam/int
 import gleam/list
 import gleam/option
 import gleam/order
+import gleam/otp/actor
 import gleam/pair
 import gleam/result
 import gleam/string
@@ -55,12 +56,12 @@ pub fn stop(
       |> result.replace_error(rt.UnknownStop(stop_id)),
     )
 
-    // TODO: don't parse new gtfs every request
-    let feed = rt.gtfs_rt_feed_from_stop_id(stop_id)
-    use gtfs <- result.map(rt.fetch_gtfs(feed:))
+    let state.RtData(current: gtfs, last_updated:) =
+      actor.call(state.rt_actor.data, waiting: 10, sending: state.Get)
 
-    #(
+    Ok(#(
       stop,
+      last_updated,
       gtfs
         |> rt.trains_stopping(at: stop_id)
         |> list.sort(by: fn(a, b) {
@@ -88,18 +89,24 @@ pub fn stop(
         })
         |> pair.map_first(list.take(_, 10))
         |> pair.map_second(list.take(_, 10)),
-    )
+    ))
   }
 
   let head = case data {
-    Ok(#(stop, _)) -> [html.title([], "Trains at " <> stop.name)]
+    Ok(#(stop, _, _)) -> [html.title([], "Trains at " <> stop.name)]
     Error(_) -> [html.title([], "Error!")]
   }
 
   let body = case data {
-    Ok(#(stop, #(uptown, downtown))) -> [
+    Ok(#(stop, last_updated, #(uptown, downtown))) -> [
       html.h1([], [
         html.text(stop.name),
+      ]),
+      html.p([], [
+        html.text(
+          "Last updated "
+          <> { last_updated |> timestamp.to_rfc3339(duration.hours(-4)) },
+        ),
       ]),
       html.h2([], [html.text("Uptown")]),
       html.ul(
