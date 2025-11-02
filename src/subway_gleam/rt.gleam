@@ -128,14 +128,17 @@ pub fn analyze(raw: gtfs_rt_nyct.FeedMessage) -> Data {
                   })
                 })
                 |> pair.map_second(fn(final_stops) {
-                  case final_stop {
-                    Error(Nil) -> final_stops
-                    Ok(#(final_stop, _)) ->
+                  case
+                    final_stop,
+                    train_stopping.trip.trip_id |> st.parse_shape_id
+                  {
+                    Ok(#(final_stop, _)), Ok(shape_id) ->
                       dict.insert(
                         into: final_stops,
-                        for: train_stopping.trip.trip_id |> st.ShapeId,
+                        for: shape_id,
                         insert: final_stop,
                       )
+                    _, _ -> final_stops
                   }
                 })
               },

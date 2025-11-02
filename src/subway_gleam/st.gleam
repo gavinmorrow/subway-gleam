@@ -339,11 +339,18 @@ fn trip_decoder() -> decode.Decoder(Trip) {
   decode.success(Trip(id:, headsign:, shape_id:))
 }
 
-pub type ShapeId {
+pub opaque type ShapeId {
   ShapeId(String)
 }
 
 fn shape_id_decoder() -> decode.Decoder(ShapeId) {
   use shape_id <- decode.then(decode.string)
   ShapeId(shape_id) |> decode.success
+}
+
+pub fn parse_shape_id(from trip_id: String) -> Result(ShapeId, Nil) {
+  trip_id
+  |> string.split(on: "_")
+  |> list.last
+  |> result.map(ShapeId)
 }

@@ -77,7 +77,7 @@ pub fn stop(
         })
         |> list.fold(from: #([], []), with: fn(acc, update) {
           let #(uptown_acc, downtown_acc) = acc
-          let li = arrival_li(update, state.schedule.trips)
+          let li = arrival_li(update, state.schedule, gtfs)
           case update.stop_id.direction {
             // Treat no direction as uptown
             // TODO: figure out what should be done here. is it even be possible?
@@ -130,18 +130,24 @@ pub fn stop(
 
 fn arrival_li(
   update: rt.TrainStopping,
-  trips: st.Trips,
+  schedule: st.Schedule,
+  gtfs: rt.Data,
 ) -> List(element.Element(msg)) {
   let rt.TrainStopping(trip:, time:, stop_id: _) = update
 
   let headsign = {
-    use shape_id <- result.try(
-      trip.trip_id
-      |> string.split(on: "_")
-      |> list.last
-      |> result.map(st.ShapeId),
-    )
-    use headsign <- result.map(trips.headsigns |> dict.get(shape_id))
+    use shape_id <- result.try(st.parse_shape_id(from: trip.trip_id))
+    let headsign =
+      schedule.trips.headsigns
+      |> dict.get(shape_id)
+      |> result.lazy_or(fn() {
+        dict.get(gtfs.final_stops, shape_id)
+        |> result.try(fn(stop_id) {
+          list.find(schedule.stops, fn(stop) { stop.id == stop_id })
+        })
+        |> result.map(fn(stop) { stop.name })
+      })
+    use headsign <- result.map(headsign)
     html.span([], [html.text(headsign)])
   }
 
