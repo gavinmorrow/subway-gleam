@@ -1,13 +1,24 @@
+import gleam/dict
 import gleam/http/request
 import gleam/httpc
 import gleam/list
 import gleam/option
+import gleam/pair
 import gleam/result
 import gleam/time/timestamp
 import gtfs_rt_nyct
 import protobin
 
 import subway_gleam/st
+
+// TODO: find a better name
+pub type Data {
+  Data(
+    message: gtfs_rt_nyct.FeedMessage,
+    arrivals: dict.Dict(st.StopId, List(TrainStopping)),
+    final_stops: dict.Dict(st.ShapeId, st.StopId),
+  )
+}
 
 pub type TrainStopping {
   TrainStopping(
@@ -86,42 +97,106 @@ pub fn fetch_gtfs(
   |> result.map_error(ParseError)
 }
 
-pub fn trains_stopping(
-  feed: gtfs_rt_nyct.FeedMessage,
-  at stop_id: st.StopId,
-) -> List(TrainStopping) {
-  use acc, entity <- list.fold(over: feed.entity, from: [])
-
-  case entity.data {
-    gtfs_rt_nyct.TripUpdate(trip:, stop_time_updates:) -> {
-      let is_stop = fn(update: gtfs_rt_nyct.StopTimeUpdate) {
-        case st.parse_stop_id(update.stop_id) {
-          Error(Nil) -> False
-          Ok(id) -> id.route == stop_id.route && id.id == stop_id.id
+pub fn analyze(raw: gtfs_rt_nyct.FeedMessage) -> Data {
+  let #(arrivals, final_stops) =
+    list.fold(
+      over: raw.entity,
+      from: #(dict.new(), dict.new()),
+      with: fn(acc, entity) {
+        let #(arrivals, final_stops) = acc
+        case entity.data {
+          gtfs_rt_nyct.Alert(informed_entities:, header_text:) -> #(
+            arrivals,
+            final_stops,
+          )
+          gtfs_rt_nyct.TripUpdate(trip:, stop_time_updates:) -> {
+            let new_arrivals = parse_trip_update(trip, stop_time_updates)
+            let final_stop = list.last(new_arrivals)
+            list.fold(
+              over: new_arrivals,
+              from: #(arrivals, final_stops),
+              with: fn(acc, value) {
+                let #(stop_id, train_stopping) = value
+                let stop_id = st.erase_direction(stop_id)
+                acc
+                |> pair.map_first(fn(arrivals) {
+                  dict.upsert(in: arrivals, update: stop_id, with: fn(cur) {
+                    case cur {
+                      option.None -> [train_stopping]
+                      option.Some(cur) -> [train_stopping, ..cur]
+                    }
+                  })
+                })
+                |> pair.map_second(fn(final_stops) {
+                  case final_stop {
+                    Error(Nil) -> final_stops
+                    Ok(#(final_stop, _)) ->
+                      dict.insert(
+                        into: final_stops,
+                        for: train_stopping.trip.trip_id |> st.ShapeId,
+                        insert: final_stop,
+                      )
+                  }
+                })
+              },
+            )
+          }
+          gtfs_rt_nyct.VehiclePosition(
+            trip:,
+            current_stop_sequence:,
+            current_status:,
+            timestamp:,
+            stop_id:,
+          ) -> #(arrivals, final_stops)
         }
-      }
+      },
+    )
 
-      let stop = {
-        use stop <- result.try(list.find(stop_time_updates, one_that: is_stop))
+  Data(message: raw, arrivals:, final_stops:)
+}
 
-        let stop_time_event =
-          stop.arrival |> option.or(stop.departure) |> option.to_result(Nil)
-        use gtfs_rt_nyct.StopTimeEvent(unix) <- result.try(stop_time_event)
+// pub fn trains_stopping(
+//   feed: gtfs_rt_nyct.FeedMessage,
+//   at stop_id: st.StopId,
+// ) -> List(TrainStopping) {
+//   use acc, entity <- list.fold(over: feed.entity, from: [])
 
-        let gtfs_rt_nyct.UnixTime(unix_secs) = unix
-        let time = timestamp.from_unix_seconds(unix_secs)
+//   case entity.data {
+//     gtfs_rt_nyct.TripUpdate(trip:, stop_time_updates:) ->
+//       case
+//         parse_trip_update(trip, stop_time_updates)
+//         |> dict.from_list
+//         |> dict.get(stop_id)
+//       {
+//         Ok(stop) -> [stop, ..acc]
+//         Error(Nil) -> acc
+//       }
+//     _ -> acc
+//   }
+// }
 
-        use stop_id <- result.try(st.parse_stop_id(stop.stop_id))
+fn parse_trip_update(
+  trip: gtfs_rt_nyct.TripDescriptor,
+  stop_time_updates: List(gtfs_rt_nyct.StopTimeUpdate),
+) -> List(#(st.StopId, TrainStopping)) {
+  use acc, stop <- list.fold(over: stop_time_updates, from: [])
 
-        TrainStopping(trip:, time:, stop_id:)
-        |> Ok
-      }
+  let train_stopping = {
+    let stop_time_event =
+      stop.arrival |> option.or(stop.departure) |> option.to_result(Nil)
+    use gtfs_rt_nyct.StopTimeEvent(unix) <- result.try(stop_time_event)
 
-      case stop {
-        Ok(stop) -> [stop, ..acc]
-        Error(Nil) -> acc
-      }
-    }
-    _ -> acc
+    let gtfs_rt_nyct.UnixTime(unix_secs) = unix
+    let time = timestamp.from_unix_seconds(unix_secs)
+
+    use stop_id <- result.try(st.parse_stop_id(stop.stop_id))
+
+    TrainStopping(trip:, time:, stop_id:)
+    |> Ok
+  }
+
+  case train_stopping {
+    Error(Nil) -> acc
+    Ok(train_stopping) -> [#(train_stopping.stop_id, train_stopping), ..acc]
   }
 }

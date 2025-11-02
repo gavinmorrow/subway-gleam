@@ -62,8 +62,9 @@ pub fn stop(
     Ok(#(
       stop,
       last_updated,
-      gtfs
-        |> rt.trains_stopping(at: stop_id)
+      gtfs.arrivals
+        |> dict.get(stop_id)
+        |> result.unwrap(or: [])
         |> list.sort(by: fn(a, b) {
           timestamp.compare(a.time, b.time) |> order.negate
         })

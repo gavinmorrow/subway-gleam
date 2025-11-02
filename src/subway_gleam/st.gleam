@@ -163,6 +163,10 @@ fn stop_id_decoder() -> decode.Decoder(StopId) {
   }
 }
 
+pub fn erase_direction(stop_id: StopId) -> StopId {
+  StopId(..stop_id, direction: option.None)
+}
+
 pub type Direction {
   North
   South

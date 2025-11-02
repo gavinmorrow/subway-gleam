@@ -3,7 +3,6 @@ import gleam/option
 import gleam/otp/actor
 import gleam/result
 import gleam/time/timestamp
-import gtfs_rt_nyct
 
 import subway_gleam/rt
 import subway_gleam/st
@@ -25,7 +24,7 @@ pub type RtActorState {
 }
 
 pub type RtData {
-  RtData(current: gtfs_rt_nyct.FeedMessage, last_updated: timestamp.Timestamp)
+  RtData(current: rt.Data, last_updated: timestamp.Timestamp)
 }
 
 pub type RtActorMessage {
@@ -40,7 +39,9 @@ pub fn rt_actor(
   actor.new_with_initialiser(60 * 1000, fn(self) {
     let current_time = timestamp.system_time()
     use rt <- result.try(
-      rt.fetch_gtfs(feed:) |> result.replace_error("fetch gtfs_rt error"),
+      rt.fetch_gtfs(feed:)
+      |> result.map(rt.analyze)
+      |> result.replace_error("fetch gtfs_rt error"),
     )
     let data = RtData(current: rt, last_updated: current_time)
     let state = RtActorState(self:, feed:, data:)
@@ -64,6 +65,7 @@ fn rt_handle_message(
       process.spawn(fn() {
         let time_started = timestamp.system_time()
         rt.fetch_gtfs(feed: state.feed)
+        |> result.map(rt.analyze)
         |> result.map(RtData(current: _, last_updated: time_started))
         |> SetData
         |> process.send(state.self, _)
