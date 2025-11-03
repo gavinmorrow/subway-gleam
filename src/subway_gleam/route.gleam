@@ -195,7 +195,7 @@ pub fn train(
   state: state.State,
   train_id: String,
 ) -> wisp.Response {
-  use req <- lustre_middleware.lustre_res(req)
+  use _req <- lustre_middleware.lustre_res(req)
 
   let state.RtData(current: gtfs, last_updated:) = state.fetch_gtfs(state)
 
