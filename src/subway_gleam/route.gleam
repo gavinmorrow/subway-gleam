@@ -249,7 +249,7 @@ fn stop_li(
   html.li([], [
     html.a([attribute.href(stop_url)], [
       html.span([], [html.text(stop_name)]),
-      html.span([], [html.text(time |> min_from_now |> int.to_string)]),
+      html.span([], [html.text(time |> min_from_now |> int.to_string <> "min")]),
     ]),
   ])
 }
