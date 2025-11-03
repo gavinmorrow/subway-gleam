@@ -56,8 +56,7 @@ pub fn stop(
       |> result.replace_error(rt.UnknownStop(stop_id)),
     )
 
-    let state.RtData(current: gtfs, last_updated:) =
-      actor.call(state.rt_actor.data, waiting: 10, sending: state.Get)
+    let state.RtData(current: gtfs, last_updated:) = state.fetch_gtfs(state)
 
     Ok(#(
       stop,

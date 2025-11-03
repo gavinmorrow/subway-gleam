@@ -33,6 +33,10 @@ pub type RtActorMessage {
   SetData(Result(RtData, rt.FetchGtfsError))
 }
 
+pub fn fetch_gtfs(state: State) -> RtData {
+  actor.call(state.rt_actor.data, waiting: 100, sending: Get)
+}
+
 pub fn rt_actor(
   feed feed: rt.GtfsRtFeed,
 ) -> Result(actor.Started(process.Subject(RtActorMessage)), actor.StartError) {
