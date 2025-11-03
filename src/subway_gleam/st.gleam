@@ -167,6 +167,16 @@ fn stop_id_decoder() -> decode.Decoder(StopId) {
   }
 }
 
+pub fn stop_id_to_string(stop_id: StopId) -> String {
+  let StopId(route:, id:, direction:) = stop_id
+
+  let route = route |> route_to_string
+  let id = id |> int.to_string |> string.pad_start(to: 2, with: "0")
+  let direction = direction |> direction_to_string
+
+  route <> id <> direction
+}
+
 pub fn erase_direction(stop_id: StopId) -> StopId {
   StopId(..stop_id, direction: option.None)
 }
@@ -283,6 +293,37 @@ fn parse_route(from str: String, at id: Int) -> Result(Route, Nil) {
   }
 }
 
+pub fn route_to_string(route: Route) -> String {
+  case route {
+    A -> "A"
+    B -> "B"
+    C -> "C"
+    D -> "D"
+    E -> "E"
+    F -> "F"
+    G -> "G"
+    J -> "J"
+    L -> "L"
+    M -> "M"
+    N -> "N"
+    N1 -> "1"
+    N2 -> "2"
+    N3 -> "3"
+    N4 -> "4"
+    N5 -> "5"
+    N6 -> "6"
+    N7 -> "7"
+    Q -> "Q"
+    R -> "R"
+    S -> "9"
+    Sf -> "S"
+    Si -> "S"
+    Sr -> "H"
+    W -> "W"
+    Z -> "Z"
+  }
+}
+
 fn parse_optional_direction(
   from str: String,
 ) -> Result(option.Option(Direction), Nil) {
@@ -291,6 +332,14 @@ fn parse_optional_direction(
     "S" -> Ok(option.Some(South))
     "" -> Ok(option.None)
     _ -> Error(Nil)
+  }
+}
+
+pub fn direction_to_string(direction: option.Option(Direction)) -> String {
+  case direction {
+    option.None -> ""
+    option.Some(North) -> "N"
+    option.Some(South) -> "S"
   }
 }
 

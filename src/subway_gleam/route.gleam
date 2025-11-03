@@ -203,15 +203,13 @@ pub fn train(
   let trip = train_id |> result.try(dict.get(gtfs.trips, _))
   let stops = {
     use stops <- result.map(trip)
-    use stop <- list.map(stops)
+    use arrival <- list.map(stops)
 
-    let stop_name =
+    let stop =
       state.schedule.stops
-      |> dict.get(stop.stop_id)
-      |> result.map(fn(stop) { stop.name })
-      |> result.unwrap(or: "<Unknown stop>")
-    let time = stop.time
-    stop_li(stop_name, time)
+      |> dict.get(arrival.stop_id)
+    let time = arrival.time
+    stop_li(stop, time)
   }
 
   let stops_list = case stops {
@@ -231,9 +229,26 @@ pub fn train(
   #(Body(body:), wisp.response(200))
 }
 
-fn stop_li(stop_name: String, time: timestamp.Timestamp) -> element.Element(msg) {
-  html.li([], [
+fn stop_li(
+  stop: Result(st.Stop, Nil),
+  time: timestamp.Timestamp,
+) -> element.Element(msg) {
+  let stop_name =
+    stop
+    |> result.map(fn(stop) { stop.name })
+    |> result.unwrap(or: "<Unknown stop>")
+  let stop_url =
+    result.map(stop, fn(stop) {
+      let id = stop.id |> st.erase_direction |> st.stop_id_to_string
+      "/stop/" <> id
+    })
+
+  let inner = [
     html.span([], [html.text(stop_name)]),
     html.span([], [html.text(time |> min_from_now |> int.to_string)]),
-  ])
+  ]
+  case stop_url {
+    Error(Nil) -> html.li([], inner)
+    Ok(stop_url) -> html.li([], [html.a([attribute.href(stop_url)], inner)])
+  }
 }
