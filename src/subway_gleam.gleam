@@ -1,16 +1,13 @@
 import gleam/erlang/process
-import gleam/option
 import gleam/otp/actor
-import gleam/uri
 import mist
 import repeatedly
-import simplifile
 import subway_gleam/rt
 import wisp
 import wisp/wisp_mist
 
 import subway_gleam/route
-import subway_gleam/st
+import subway_gleam/schedule
 import subway_gleam/state
 
 pub fn main() -> Nil {
@@ -18,25 +15,9 @@ pub fn main() -> Nil {
   let assert Ok(schedule) = {
     // TODO: actually fetch from internet, use `st.fetch_bin()`
     // Haven't done this yet b/c it wastes internet in prototyping
-    let assert Ok(bits) = simplifile.read_bits("./gtfs_subway.zip")
-    st.parse(bits)
-    // let id = st.StopId(route: st.N6, id: 35, direction: _)
-    // let stop = fn(id, parent) {
-    //   st.Stop(
-    //     id:,
-    //     name: "14 St-Union Sq",
-    //     lat: 0.0,
-    //     lon: 0.0,
-    //     location_type: option.None,
-    //     parent_station: parent,
-    //   )
-    // }
-    // st.Schedule([
-    //   stop(id(option.None), option.None),
-    //   stop(id(option.Some(st.North)), option.Some(id(option.None))),
-    //   stop(id(option.Some(st.South)), option.Some(id(option.None))),
-    // ])
-    // |> Ok
+    // let assert Ok(bits) = simplifile.read_bits("./gtfs_subway.zip")
+    // st.parse(bits)
+    schedule.schedule() |> Ok
   }
   let assert Ok(rt_actor) = state.rt_actor(feed: rt.S1234567)
   let state = state.State(priv_dir:, schedule:, rt_actor:)
