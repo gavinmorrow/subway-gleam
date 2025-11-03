@@ -10,7 +10,8 @@ body {
   color: var(--color-text);
 }
 
-.arrival-list {
+.arrival-list,
+.stops-list {
   list-style: none;
   padding: 0;
 
@@ -37,9 +38,11 @@ body {
         margin-bottom: -0.25em;
       }
     }
-  }
-}
 
-.stops-list {
-  list-style: none;
+    a {
+      /* TODO: remove when the whole li is a link */
+      color: var(--color-text);
+      text-decoration: none;
+    }
+  }
 }
