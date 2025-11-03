@@ -39,3 +39,7 @@ body {
     }
   }
 }
+
+.stops-list {
+  list-style: none;
+}

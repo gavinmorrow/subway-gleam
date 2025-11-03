@@ -1,6 +1,7 @@
 import gleam/erlang/process
 import gleam/option
 import gleam/otp/actor
+import gleam/uri
 import mist
 import repeatedly
 import simplifile
@@ -66,6 +67,7 @@ fn handler(state: state.State, req: wisp.Request) -> wisp.Response {
   case wisp.path_segments(req) {
     [] -> route.index(req)
     ["stop", stop_id] -> route.stop(req, state, stop_id)
+    ["train", train_id] -> route.train(req, state, train_id)
     _ -> route.not_found(req)
   }
 }

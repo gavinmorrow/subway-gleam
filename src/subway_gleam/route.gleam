@@ -151,7 +151,17 @@ fn arrival_li(
 
   [
     route_bullet(trip.route_id),
-    headsign |> result.unwrap(or: element.none()),
+    html.a(
+      [
+        attribute.href(
+          "/train/"
+          <> update.trip.nyct.train_id
+          |> option.unwrap(or: "")
+          |> uri.percent_encode,
+        ),
+      ],
+      [headsign |> result.unwrap(or: element.none())],
+    ),
     html.span([], [
       html.text(
         time
@@ -174,4 +184,52 @@ fn min_from_now(time: timestamp.Timestamp) -> Int {
   |> float.divide(60.0)
   |> result.unwrap(0.0)
   |> float.round
+}
+
+pub fn train(
+  req: wisp.Request,
+  state: state.State,
+  train_id: String,
+) -> wisp.Response {
+  use req <- lustre_middleware.lustre_res(req)
+
+  let state.RtData(current: gtfs, last_updated:) = state.fetch_gtfs(state)
+
+  let train_id = train_id |> uri.percent_decode |> result.map(rt.TrainId)
+  let trip = train_id |> result.try(dict.get(gtfs.trips, _))
+  let stops = {
+    use stops <- result.map(trip)
+    use stop <- list.map(stops)
+
+    let stop_name =
+      state.schedule.stops
+      |> dict.get(stop.stop_id)
+      |> result.map(fn(stop) { stop.name })
+      |> result.unwrap(or: "<Unknown stop>")
+    let time = stop.time
+    stop_li(stop_name, time)
+  }
+
+  let stops_list = case stops {
+    Error(Nil) -> html.p([], [html.text("Could not find train.")])
+    Ok(stops) -> html.ol([attribute.class("stops-list")], stops)
+  }
+  let body = [
+    html.p([], [
+      html.text(
+        "Last updated "
+        <> last_updated |> timestamp.to_rfc3339(duration.hours(-4)),
+      ),
+    ]),
+    stops_list,
+  ]
+
+  #(Body(body:), wisp.response(200))
+}
+
+fn stop_li(stop_name: String, time: timestamp.Timestamp) -> element.Element(msg) {
+  html.li([], [
+    html.span([], [html.text(stop_name)]),
+    html.span([], [html.text(time |> min_from_now |> int.to_string)]),
+  ])
 }
