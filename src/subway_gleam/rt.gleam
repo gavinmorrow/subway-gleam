@@ -158,26 +158,6 @@ pub fn analyze(raw: gtfs_rt_nyct.FeedMessage) -> Data {
   Data(message: raw, arrivals:, final_stops:)
 }
 
-// pub fn trains_stopping(
-//   feed: gtfs_rt_nyct.FeedMessage,
-//   at stop_id: st.StopId,
-// ) -> List(TrainStopping) {
-//   use acc, entity <- list.fold(over: feed.entity, from: [])
-
-//   case entity.data {
-//     gtfs_rt_nyct.TripUpdate(trip:, stop_time_updates:) ->
-//       case
-//         parse_trip_update(trip, stop_time_updates)
-//         |> dict.from_list
-//         |> dict.get(stop_id)
-//       {
-//         Ok(stop) -> [stop, ..acc]
-//         Error(Nil) -> acc
-//       }
-//     _ -> acc
-//   }
-// }
-
 fn parse_trip_update(
   trip: gtfs_rt_nyct.TripDescriptor,
   stop_time_updates: List(gtfs_rt_nyct.StopTimeUpdate),
