@@ -1,6 +1,7 @@
 :root {
   --color-bg-0: oklch(0.1 0.05 265.55);
   --color-bg-1: oklch(from var(--color-bg-0) 0.2 c h);
+  --color-bg-highlight: oklch(from var(--color-bg-1) 0.4 c h);
   --color-text: #eee;
 }
 
@@ -24,6 +25,10 @@ body {
     text-decoration: none;
 
     background-color: var(--color-bg-1);
+    &.highlight {
+      background-color: var(--color-bg-highlight);
+    }
+
     --padding: 0.5em;
     --margin: calc(var(--padding) * 2 / 3);
     padding: var(--padding);

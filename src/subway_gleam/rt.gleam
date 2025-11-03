@@ -50,6 +50,11 @@ pub type TrainId {
   TrainId(String)
 }
 
+pub fn train_id_to_string(train_id: TrainId) -> String {
+  let TrainId(train_id) = train_id
+  train_id
+}
+
 pub type GtfsRtFeed {
   ACESr
   BDFMSf

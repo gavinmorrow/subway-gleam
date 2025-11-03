@@ -43,7 +43,18 @@ pub fn stop(
   state: state.State,
   stop_id: String,
 ) -> wisp.Response {
-  use _req <- lustre_res(req)
+  use req <- lustre_res(req)
+
+  // TODO: make this a function?
+  let highlighted_train =
+    req.query
+    |> option.map(uri.parse_query)
+    |> option.to_result(Nil)
+    |> result.flatten
+    |> result.unwrap(or: [])
+    |> list.key_find("train_id")
+    |> result.try(uri.percent_decode)
+    |> result.map(rt.TrainId)
 
   let data = {
     use stop_id <- result.try(
@@ -76,7 +87,7 @@ pub fn stop(
         })
         |> list.fold(from: #([], []), with: fn(acc, update) {
           let #(uptown_acc, downtown_acc) = acc
-          let li = arrival_li(update, state.schedule, gtfs)
+          let li = arrival_li(update, state.schedule, gtfs, highlighted_train)
           case update.stop_id.direction {
             // Treat no direction as uptown
             // TODO: figure out what should be done here. is it even be possible?
@@ -109,17 +120,9 @@ pub fn stop(
         ),
       ]),
       html.h2([], [html.text("Uptown")]),
-      html.ul(
-        [attribute.class("arrival-list")],
-        uptown
-          |> list.map(html.li([], _)),
-      ),
+      html.ul([attribute.class("arrival-list")], uptown),
       html.h2([], [html.text("Downtown")]),
-      html.ul(
-        [attribute.class("arrival-list")],
-        downtown
-          |> list.map(html.li([], _)),
-      ),
+      html.ul([attribute.class("arrival-list")], downtown),
     ]
     Error(err) -> [html.p([], [html.text("Error: " <> string.inspect(err))])]
   }
@@ -131,7 +134,8 @@ fn arrival_li(
   update: rt.TrainStopping,
   schedule: st.Schedule,
   gtfs: rt.Data,
-) -> List(element.Element(msg)) {
+  highlighted_train: Result(rt.TrainId, Nil),
+) -> element.Element(msg) {
   let rt.TrainStopping(trip:, time:, stop_id: _) = update
 
   let headsign = {
@@ -156,23 +160,41 @@ fn arrival_li(
     |> option.map(uri.percent_encode)
   let train_url =
     train_id_percent_encode
-    |> option.map(fn(id) { "/train/" <> id })
+    |> option.map(fn(id) {
+      let query =
+        uri.query_to_string([
+          #("stop_id", update.stop_id |> st.stop_id_to_string),
+        ])
+      "/train/" <> id <> "?" <> query
+    })
     |> option.unwrap(or: "")
 
-  [
-    html.a([attribute.href(train_url)], [
-      route_bullet(trip.route_id),
-      headsign |> result.unwrap(or: element.none()),
-      html.span([], [
-        html.text(
-          time
-          |> min_from_now
-          |> int.to_string
-          <> "min",
-        ),
-      ]),
-    ]),
-  ]
+  let train_id = update.trip.nyct.train_id |> option.map(rt.TrainId)
+  let is_highlighted = case train_id, highlighted_train {
+    option.Some(train_id), Ok(highlight) -> train_id == highlight
+    _, _ -> False
+  }
+
+  html.li([], [
+    html.a(
+      [
+        attribute.href(train_url),
+        attribute.classes([#("highlight", is_highlighted)]),
+      ],
+      [
+        route_bullet(trip.route_id),
+        headsign |> result.unwrap(or: element.none()),
+        html.span([], [
+          html.text(
+            time
+            |> min_from_now
+            |> int.to_string
+            <> "min",
+          ),
+        ]),
+      ],
+    ),
+  ])
 }
 
 fn route_bullet(route_id: String) -> element.Element(msg) {
@@ -193,13 +215,25 @@ pub fn train(
   state: state.State,
   train_id: String,
 ) -> wisp.Response {
-  use _req <- lustre_middleware.lustre_res(req)
+  use req <- lustre_middleware.lustre_res(req)
+
+  // TODO: make this a function?
+  let highlighted_stop =
+    req.query
+    |> option.map(uri.parse_query)
+    |> option.to_result(Nil)
+    |> result.flatten
+    |> result.unwrap(or: [])
+    |> list.key_find("stop_id")
+    |> result.try(st.parse_stop_id)
 
   let state.RtData(current: gtfs, last_updated:) = state.fetch_gtfs(state)
 
-  let train_id = train_id |> uri.percent_decode |> result.map(rt.TrainId)
-  let trip = train_id |> result.try(dict.get(gtfs.trips, _))
   let stops = {
+    use train_id <- result.try(uri.percent_decode(train_id))
+    let train_id = rt.TrainId(train_id)
+
+    let trip = dict.get(gtfs.trips, train_id)
     use stops <- result.map(trip)
     use arrival <- list.filter_map(stops)
 
@@ -208,7 +242,7 @@ pub fn train(
       |> dict.get(arrival.stop_id)
     let time = arrival.time
     case time |> min_from_now {
-      dt if dt >= 0 -> Ok(stop_li(stop, time))
+      dt if dt >= 0 -> Ok(stop_li(stop, time, train_id, highlighted_stop))
       _ -> Error(Nil)
     }
   }
@@ -233,6 +267,8 @@ pub fn train(
 fn stop_li(
   stop: Result(st.Stop, Nil),
   time: timestamp.Timestamp,
+  train_id: rt.TrainId,
+  highlighted_stop: Result(st.StopId, Nil),
 ) -> element.Element(msg) {
   let stop_name =
     stop
@@ -240,15 +276,31 @@ fn stop_li(
     |> result.unwrap(or: "<Unknown stop>")
   let stop_url =
     result.map(stop, fn(stop) {
-      let id = stop.id |> st.erase_direction |> st.stop_id_to_string
-      "/stop/" <> id
+      let stop_id = stop.id |> st.erase_direction |> st.stop_id_to_string
+      let train_id = train_id |> rt.train_id_to_string |> uri.percent_encode
+      let query = uri.query_to_string([#("train_id", train_id)])
+      "/stop/" <> stop_id <> "?" <> query
     })
     |> result.unwrap(or: "")
 
+  let stop_id = stop |> result.map(fn(stop) { stop.id })
+  let is_highlighted = case stop_id, highlighted_stop {
+    Ok(stop_id), Ok(highlight) -> stop_id == highlight
+    _, _ -> False
+  }
+
   html.li([], [
-    html.a([attribute.href(stop_url)], [
-      html.span([], [html.text(stop_name)]),
-      html.span([], [html.text(time |> min_from_now |> int.to_string <> "min")]),
-    ]),
+    html.a(
+      [
+        attribute.href(stop_url),
+        attribute.classes([#("highlight", is_highlighted)]),
+      ],
+      [
+        html.span([], [html.text(stop_name)]),
+        html.span([], [
+          html.text(time |> min_from_now |> int.to_string <> "min"),
+        ]),
+      ],
+    ),
   ])
 }
