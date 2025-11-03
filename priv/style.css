@@ -15,10 +15,13 @@ body {
   list-style: none;
   padding: 0;
 
-  li {
+  li a {
     display: flex;
     justify-content: space-between;
     align-items: center;
+
+    color: var(--color-text);
+    text-decoration: none;
 
     background-color: var(--color-bg-1);
     --padding: 0.5em;
@@ -37,12 +40,6 @@ body {
         margin-top: -0.05em;
         margin-bottom: -0.25em;
       }
-    }
-
-    a {
-      /* TODO: remove when the whole li is a link */
-      color: var(--color-text);
-      text-decoration: none;
     }
   }
 }

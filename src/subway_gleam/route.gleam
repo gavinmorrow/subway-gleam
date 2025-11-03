@@ -149,19 +149,9 @@ fn arrival_li(
     html.span([], [html.text(headsign)])
   }
 
-  [
+  let inner = [
     route_bullet(trip.route_id),
-    html.a(
-      [
-        attribute.href(
-          "/train/"
-          <> update.trip.nyct.train_id
-          |> option.unwrap(or: "")
-          |> uri.percent_encode,
-        ),
-      ],
-      [headsign |> result.unwrap(or: element.none())],
-    ),
+    headsign |> result.unwrap(or: element.none()),
     html.span([], [
       html.text(
         time
@@ -171,6 +161,17 @@ fn arrival_li(
       ),
     ]),
   ]
+
+  let train_id_percent_encode =
+    update.trip.nyct.train_id
+    |> option.map(uri.percent_encode)
+  let train_url =
+    train_id_percent_encode |> option.map(fn(id) { "/train/" <> id })
+
+  case train_url {
+    option.None -> inner
+    option.Some(train_url) -> [html.a([attribute.href(train_url)], inner)]
+  }
 }
 
 fn route_bullet(route_id: String) -> element.Element(msg) {
