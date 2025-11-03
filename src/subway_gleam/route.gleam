@@ -144,6 +144,9 @@ fn arrival_li(
         dict.get(gtfs.final_stops, shape_id)
         |> result.try(dict.get(schedule.stops, _))
         |> result.map(fn(stop) { stop.name })
+        // TODO: maybe don't want to always have a value?
+        |> result.unwrap(or: "<Unknown stop>")
+        |> Ok
       })
     use headsign <- result.map(headsign)
     html.span([], [html.text(headsign)])
