@@ -1,5 +1,4 @@
 import gleam/erlang/process
-import gleam/option
 import gleam/otp/actor
 import gleam/result
 import gleam/time/timestamp

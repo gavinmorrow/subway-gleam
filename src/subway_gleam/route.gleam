@@ -4,7 +4,6 @@ import gleam/int
 import gleam/list
 import gleam/option
 import gleam/order
-import gleam/otp/actor
 import gleam/pair
 import gleam/result
 import gleam/string

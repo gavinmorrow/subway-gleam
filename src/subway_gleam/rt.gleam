@@ -122,7 +122,7 @@ pub fn fetch_gtfs(
 pub fn analyze(raw: gtfs_rt_nyct.FeedMessage) -> Data {
   list.fold(over: raw.entity, from: empty_data(raw), with: fn(acc, entity) {
     case entity.data {
-      gtfs_rt_nyct.Alert(informed_entities:, header_text:) -> acc
+      gtfs_rt_nyct.Alert(informed_entities: _, header_text: _) -> acc
       gtfs_rt_nyct.TripUpdate(trip:, stop_time_updates:) -> {
         let new_arrivals = parse_trip_update(trip, stop_time_updates)
         let final_stop = list.last(new_arrivals)
@@ -164,11 +164,11 @@ pub fn analyze(raw: gtfs_rt_nyct.FeedMessage) -> Data {
         })
       }
       gtfs_rt_nyct.VehiclePosition(
-        trip:,
-        current_stop_sequence:,
-        current_status:,
-        timestamp:,
-        stop_id:,
+        trip: _,
+        current_stop_sequence: _,
+        current_status: _,
+        timestamp: _,
+        stop_id: _,
       ) -> acc
     }
   })
