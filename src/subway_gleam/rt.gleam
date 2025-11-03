@@ -162,7 +162,7 @@ fn parse_trip_update(
   trip: gtfs_rt_nyct.TripDescriptor,
   stop_time_updates: List(gtfs_rt_nyct.StopTimeUpdate),
 ) -> List(#(st.StopId, TrainStopping)) {
-  use acc, stop <- list.fold(over: stop_time_updates, from: [])
+  use acc, stop <- list.fold(over: stop_time_updates |> list.reverse, from: [])
 
   let train_stopping = {
     let stop_time_event =
