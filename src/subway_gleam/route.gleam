@@ -202,13 +202,16 @@ pub fn train(
   let trip = train_id |> result.try(dict.get(gtfs.trips, _))
   let stops = {
     use stops <- result.map(trip)
-    use arrival <- list.map(stops)
+    use arrival <- list.filter_map(stops)
 
     let stop =
       state.schedule.stops
       |> dict.get(arrival.stop_id)
     let time = arrival.time
-    stop_li(stop, time)
+    case time |> min_from_now {
+      dt if dt >= 0 -> Ok(stop_li(stop, time))
+      _ -> Error(Nil)
+    }
   }
 
   let stops_list = case stops {
