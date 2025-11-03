@@ -152,29 +152,28 @@ fn arrival_li(
     html.span([], [html.text(headsign)])
   }
 
-  let inner = [
-    route_bullet(trip.route_id),
-    headsign |> result.unwrap(or: element.none()),
-    html.span([], [
-      html.text(
-        time
-        |> min_from_now
-        |> int.to_string
-        <> "min",
-      ),
-    ]),
-  ]
-
   let train_id_percent_encode =
     update.trip.nyct.train_id
     |> option.map(uri.percent_encode)
   let train_url =
-    train_id_percent_encode |> option.map(fn(id) { "/train/" <> id })
+    train_id_percent_encode
+    |> option.map(fn(id) { "/train/" <> id })
+    |> option.unwrap(or: "")
 
-  case train_url {
-    option.None -> inner
-    option.Some(train_url) -> [html.a([attribute.href(train_url)], inner)]
-  }
+  [
+    html.a([attribute.href(train_url)], [
+      route_bullet(trip.route_id),
+      headsign |> result.unwrap(or: element.none()),
+      html.span([], [
+        html.text(
+          time
+          |> min_from_now
+          |> int.to_string
+          <> "min",
+        ),
+      ]),
+    ]),
+  ]
 }
 
 fn route_bullet(route_id: String) -> element.Element(msg) {
@@ -242,13 +241,12 @@ fn stop_li(
       let id = stop.id |> st.erase_direction |> st.stop_id_to_string
       "/stop/" <> id
     })
+    |> result.unwrap(or: "")
 
-  let inner = [
-    html.span([], [html.text(stop_name)]),
-    html.span([], [html.text(time |> min_from_now |> int.to_string)]),
-  ]
-  case stop_url {
-    Error(Nil) -> html.li([], inner)
-    Ok(stop_url) -> html.li([], [html.a([attribute.href(stop_url)], inner)])
-  }
+  html.li([], [
+    html.a([attribute.href(stop_url)], [
+      html.span([], [html.text(stop_name)]),
+      html.span([], [html.text(time |> min_from_now |> int.to_string)]),
+    ]),
+  ])
 }
