@@ -32,7 +32,7 @@ pub type Feed {
 }
 
 pub type Schedule {
-  Schedule(stops: List(Stop), trips: Trips)
+  Schedule(stops: dict.Dict(StopId, Stop), trips: Trips)
 }
 
 pub type FetchError {
@@ -88,6 +88,10 @@ pub fn parse(bits: BitArray) -> Result(Schedule, FetchError) {
   use trips <- result.try(parse_file("trips.txt", trip_decoder()))
   let trips = trips_from_rows(trips)
   use stops <- result.try(parse_file("stops.txt", stop_decoder()))
+  let stops =
+    list.fold(over: stops, from: dict.new(), with: fn(acc, stop) {
+      acc |> dict.insert(for: stop.id, insert: stop)
+    })
 
   Schedule(stops:, trips:) |> Ok
 }

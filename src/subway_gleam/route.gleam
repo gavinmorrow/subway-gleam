@@ -10,6 +10,7 @@ import gleam/result
 import gleam/string
 import gleam/time/duration
 import gleam/time/timestamp
+import gleam/uri
 import lustre/attribute
 import lustre/element
 import lustre/element/html
@@ -52,7 +53,7 @@ pub fn stop(
     )
     use stop <- result.try(
       state.schedule.stops
-      |> list.find(fn(stop) { stop.id == stop_id })
+      |> dict.get(stop_id)
       |> result.replace_error(rt.UnknownStop(stop_id)),
     )
 
@@ -141,9 +142,7 @@ fn arrival_li(
       |> dict.get(shape_id)
       |> result.lazy_or(fn() {
         dict.get(gtfs.final_stops, shape_id)
-        |> result.try(fn(stop_id) {
-          list.find(schedule.stops, fn(stop) { stop.id == stop_id })
-        })
+        |> result.try(dict.get(schedule.stops, _))
         |> result.map(fn(stop) { stop.name })
       })
     use headsign <- result.map(headsign)

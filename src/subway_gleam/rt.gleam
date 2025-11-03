@@ -17,7 +17,25 @@ pub type Data {
     message: gtfs_rt_nyct.FeedMessage,
     arrivals: dict.Dict(st.StopId, List(TrainStopping)),
     final_stops: dict.Dict(st.ShapeId, st.StopId),
+    trips: dict.Dict(TrainId, List(TrainStopping)),
   )
+}
+
+fn empty_data(message: gtfs_rt_nyct.FeedMessage) -> Data {
+  Data(
+    message:,
+    arrivals: dict.new(),
+    final_stops: dict.new(),
+    trips: dict.new(),
+  )
+}
+
+fn data_map_arrivals(data: Data, fun) -> Data {
+  Data(..data, arrivals: fun(data.arrivals))
+}
+
+fn data_map_final_stops(data: Data, fun) -> Data {
+  Data(..data, final_stops: fun(data.final_stops))
 }
 
 pub type TrainStopping {
@@ -26,6 +44,10 @@ pub type TrainStopping {
     time: timestamp.Timestamp,
     stop_id: st.StopId,
   )
+}
+
+pub type TrainId {
+  TrainId(String)
 }
 
 pub type GtfsRtFeed {
@@ -98,64 +120,58 @@ pub fn fetch_gtfs(
 }
 
 pub fn analyze(raw: gtfs_rt_nyct.FeedMessage) -> Data {
-  let #(arrivals, final_stops) =
-    list.fold(
-      over: raw.entity,
-      from: #(dict.new(), dict.new()),
-      with: fn(acc, entity) {
-        let #(arrivals, final_stops) = acc
-        case entity.data {
-          gtfs_rt_nyct.Alert(informed_entities:, header_text:) -> #(
-            arrivals,
-            final_stops,
-          )
-          gtfs_rt_nyct.TripUpdate(trip:, stop_time_updates:) -> {
-            let new_arrivals = parse_trip_update(trip, stop_time_updates)
-            let final_stop = list.last(new_arrivals)
-            list.fold(
-              over: new_arrivals,
-              from: #(arrivals, final_stops),
-              with: fn(acc, value) {
-                let #(stop_id, train_stopping) = value
-                let stop_id = st.erase_direction(stop_id)
-                acc
-                |> pair.map_first(fn(arrivals) {
-                  dict.upsert(in: arrivals, update: stop_id, with: fn(cur) {
-                    case cur {
-                      option.None -> [train_stopping]
-                      option.Some(cur) -> [train_stopping, ..cur]
-                    }
-                  })
-                })
-                |> pair.map_second(fn(final_stops) {
-                  case
-                    final_stop,
-                    train_stopping.trip.trip_id |> st.parse_shape_id
-                  {
-                    Ok(#(final_stop, _)), Ok(shape_id) ->
-                      dict.insert(
-                        into: final_stops,
-                        for: shape_id,
-                        insert: final_stop,
-                      )
-                    _, _ -> final_stops
-                  }
-                })
-              },
-            )
-          }
-          gtfs_rt_nyct.VehiclePosition(
-            trip:,
-            current_stop_sequence:,
-            current_status:,
-            timestamp:,
-            stop_id:,
-          ) -> #(arrivals, final_stops)
-        }
-      },
-    )
+  list.fold(over: raw.entity, from: empty_data(raw), with: fn(acc, entity) {
+    case entity.data {
+      gtfs_rt_nyct.Alert(informed_entities:, header_text:) -> acc
+      gtfs_rt_nyct.TripUpdate(trip:, stop_time_updates:) -> {
+        let new_arrivals = parse_trip_update(trip, stop_time_updates)
+        let final_stop = list.last(new_arrivals)
 
-  Data(message: raw, arrivals:, final_stops:)
+        let train_id = trip.nyct.train_id |> option.map(TrainId)
+        let trips =
+          train_id
+          |> option.map(dict.insert(
+            into: acc.trips,
+            for: _,
+            insert: new_arrivals |> list.map(pair.second),
+          ))
+          |> option.unwrap(or: acc.trips)
+        let acc = Data(..acc, trips:)
+
+        list.fold(over: new_arrivals, from: acc, with: fn(acc, value) {
+          let #(stop_id, train_stopping) = value
+          let stop_id = st.erase_direction(stop_id)
+          acc
+          |> data_map_arrivals(fn(arrivals) {
+            dict.upsert(in: arrivals, update: stop_id, with: fn(cur) {
+              case cur {
+                option.None -> [train_stopping]
+                option.Some(cur) -> [train_stopping, ..cur]
+              }
+            })
+          })
+          |> data_map_final_stops(fn(final_stops) {
+            case final_stop, train_stopping.trip.trip_id |> st.parse_shape_id {
+              Ok(#(final_stop, _)), Ok(shape_id) ->
+                dict.insert(
+                  into: final_stops,
+                  for: shape_id,
+                  insert: final_stop,
+                )
+              _, _ -> final_stops
+            }
+          })
+        })
+      }
+      gtfs_rt_nyct.VehiclePosition(
+        trip:,
+        current_stop_sequence:,
+        current_status:,
+        timestamp:,
+        stop_id:,
+      ) -> acc
+    }
+  })
 }
 
 fn parse_trip_update(
