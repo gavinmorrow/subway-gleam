@@ -324,6 +324,73 @@ pub fn route_to_string(route: Route) -> String {
   }
 }
 
+/// This exists so that the app can convert Route <=> String losslessly.
+/// It is essentially string.inspect.
+pub fn route_to_long_id(route: Route) -> String {
+  case route {
+    A -> "A"
+    B -> "B"
+    C -> "C"
+    D -> "D"
+    E -> "E"
+    F -> "F"
+    G -> "G"
+    J -> "J"
+    L -> "L"
+    M -> "M"
+    N -> "N"
+    N1 -> "1"
+    N2 -> "2"
+    N3 -> "3"
+    N4 -> "4"
+    N5 -> "5"
+    N6 -> "6"
+    N7 -> "7"
+    Q -> "Q"
+    R -> "R"
+    S -> "S"
+    Sf -> "Sf"
+    Si -> "Si"
+    Sr -> "Sr"
+    W -> "W"
+    Z -> "Z"
+  }
+}
+
+/// This exists so that the app can convert Route <=> String losslessly.
+/// It is the opposite of route_to_string_long().
+pub fn route_id_long_to_route(route: String) -> Result(Route, Nil) {
+  case route {
+    "A" -> A |> Ok
+    "B" -> B |> Ok
+    "C" -> C |> Ok
+    "D" -> D |> Ok
+    "E" -> E |> Ok
+    "F" -> F |> Ok
+    "G" -> G |> Ok
+    "J" -> J |> Ok
+    "L" -> L |> Ok
+    "M" -> M |> Ok
+    "N" -> N |> Ok
+    "1" -> N1 |> Ok
+    "2" -> N2 |> Ok
+    "3" -> N3 |> Ok
+    "4" -> N4 |> Ok
+    "5" -> N5 |> Ok
+    "6" -> N6 |> Ok
+    "7" -> N7 |> Ok
+    "Q" -> Q |> Ok
+    "R" -> R |> Ok
+    "S" -> S |> Ok
+    "Sf" -> Sf |> Ok
+    "Si" -> Si |> Ok
+    "Sr" -> Sr |> Ok
+    "W" -> W |> Ok
+    "Z" -> Z |> Ok
+    _ -> Error(Nil)
+  }
+}
+
 fn parse_optional_direction(
   from str: String,
 ) -> Result(option.Option(Direction), Nil) {

@@ -14,27 +14,31 @@ import subway_gleam/st
 // TODO: find a better name
 pub type Data {
   Data(
-    message: gtfs_rt_nyct.FeedMessage,
     arrivals: dict.Dict(st.StopId, List(TrainStopping)),
     final_stops: dict.Dict(st.ShapeId, st.StopId),
     trips: dict.Dict(TrainId, List(TrainStopping)),
   )
 }
 
-fn empty_data(message: gtfs_rt_nyct.FeedMessage) -> Data {
-  Data(
-    message:,
-    arrivals: dict.new(),
-    final_stops: dict.new(),
-    trips: dict.new(),
-  )
+pub fn empty_data() -> Data {
+  Data(arrivals: dict.new(), final_stops: dict.new(), trips: dict.new())
 }
 
-fn data_map_arrivals(data: Data, fun) -> Data {
+pub fn data_merge(into a: Data, from b: Data) -> Data {
+  let arrivals =
+    dict.combine(a.arrivals, b.arrivals, with: fn(a, b) { list.append(a, b) })
+  let final_stops = dict.merge(into: a.final_stops, from: b.final_stops)
+  let trips =
+    dict.combine(a.trips, b.trips, with: fn(a, b) { list.append(a, b) })
+
+  Data(arrivals:, final_stops:, trips:)
+}
+
+pub fn data_map_arrivals(data: Data, fun) -> Data {
   Data(..data, arrivals: fun(data.arrivals))
 }
 
-fn data_map_final_stops(data: Data, fun) -> Data {
+pub fn data_map_final_stops(data: Data, fun) -> Data {
   Data(..data, final_stops: fun(data.final_stops))
 }
 
@@ -66,6 +70,17 @@ pub type GtfsRtFeed {
   Si
 }
 
+pub const all_feeds = [
+  ACESr,
+  BDFMSf,
+  G,
+  JZ,
+  NQRW,
+  L,
+  S1234567,
+  Si,
+]
+
 pub type FetchGtfsError {
   HttpError(httpc.HttpError)
   ParseError(protobin.ParseError)
@@ -87,8 +102,8 @@ fn gtfs_rt_feed_path(feed: GtfsRtFeed) -> String {
   "Dataservice/mtagtfsfeeds/nyct%2F" <> name
 }
 
-pub fn gtfs_rt_feed_from_stop_id(stop_id: st.StopId) -> GtfsRtFeed {
-  case stop_id.route {
+pub fn gtfs_rt_feed_from_route(route: st.Route) -> GtfsRtFeed {
+  case route {
     st.A | st.C | st.E | st.Sr -> ACESr
     st.B | st.D | st.F | st.M | st.Sf -> BDFMSf
     st.G -> G
@@ -125,7 +140,7 @@ pub fn fetch_gtfs(
 }
 
 pub fn analyze(raw: gtfs_rt_nyct.FeedMessage) -> Data {
-  list.fold(over: raw.entity, from: empty_data(raw), with: fn(acc, entity) {
+  list.fold(over: raw.entity, from: empty_data(), with: fn(acc, entity) {
     case entity.data {
       gtfs_rt_nyct.Alert(informed_entities: _, header_text: _) -> acc
       gtfs_rt_nyct.TripUpdate(trip:, stop_time_updates:) -> {

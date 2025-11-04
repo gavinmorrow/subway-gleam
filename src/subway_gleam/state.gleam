@@ -1,4 +1,5 @@
 import gleam/erlang/process
+import gleam/list
 import gleam/otp/actor
 import gleam/result
 import gleam/time/timestamp
@@ -15,11 +16,7 @@ pub type State {
 }
 
 pub type RtActorState {
-  RtActorState(
-    self: process.Subject(RtActorMessage),
-    feed: rt.GtfsRtFeed,
-    data: RtData,
-  )
+  RtActorState(self: process.Subject(RtActorMessage), data: RtData)
 }
 
 pub type RtData {
@@ -36,18 +33,36 @@ pub fn fetch_gtfs(state: State) -> RtData {
   actor.call(state.rt_actor.data, waiting: 100, sending: Get)
 }
 
-pub fn rt_actor(
-  feed feed: rt.GtfsRtFeed,
-) -> Result(actor.Started(process.Subject(RtActorMessage)), actor.StartError) {
+fn fetch_all() -> Result(RtData, rt.FetchGtfsError) {
+  let current_time = timestamp.system_time()
+
+  use data <- result.try(
+    list.try_fold(
+      over: rt.all_feeds,
+      from: rt.empty_data(),
+      with: fn(acc, feed) {
+        use rt <- result.map(
+          rt.fetch_gtfs(feed:)
+          |> result.map(rt.analyze),
+        )
+        acc |> rt.data_merge(from: rt)
+      },
+    ),
+  )
+
+  RtData(data, last_updated: current_time) |> Ok
+}
+
+pub fn rt_actor() -> Result(
+  actor.Started(process.Subject(RtActorMessage)),
+  actor.StartError,
+) {
   actor.new_with_initialiser(60 * 1000, fn(self) {
-    let current_time = timestamp.system_time()
-    use rt <- result.try(
-      rt.fetch_gtfs(feed:)
-      |> result.map(rt.analyze)
+    use data <- result.try(
+      fetch_all()
       |> result.replace_error("fetch gtfs_rt error"),
     )
-    let data = RtData(current: rt, last_updated: current_time)
-    let state = RtActorState(self:, feed:, data:)
+    let state = RtActorState(self:, data:)
 
     actor.initialised(state) |> actor.returning(self) |> Ok
   })
@@ -66,10 +81,7 @@ fn rt_handle_message(
     }
     Update -> {
       process.spawn(fn() {
-        let time_started = timestamp.system_time()
-        rt.fetch_gtfs(feed: state.feed)
-        |> result.map(rt.analyze)
-        |> result.map(RtData(current: _, last_updated: time_started))
+        fetch_all()
         |> SetData
         |> process.send(state.self, _)
       })

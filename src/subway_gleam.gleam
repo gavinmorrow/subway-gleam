@@ -2,7 +2,6 @@ import gleam/erlang/process
 import gleam/otp/actor
 import mist
 import repeatedly
-import subway_gleam/rt
 import wisp
 import wisp/wisp_mist
 
@@ -19,7 +18,7 @@ pub fn main() -> Nil {
     // st.parse(bits)
     schedule.schedule() |> Ok
   }
-  let assert Ok(rt_actor) = state.rt_actor(feed: rt.S1234567)
+  let assert Ok(rt_actor) = state.rt_actor()
   let state = state.State(priv_dir:, schedule:, rt_actor:)
 
   repeatedly.call(10 * 1000, Nil, fn(_state, _i) {

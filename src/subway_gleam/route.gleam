@@ -227,39 +227,41 @@ pub fn train(
     |> list.key_find("stop_id")
     |> result.try(st.parse_stop_id)
 
-  let state.RtData(current: gtfs, last_updated:) = state.fetch_gtfs(state)
+  let data = {
+    let state.RtData(current: gtfs, last_updated:) = state.fetch_gtfs(state)
 
-  let stops = {
     use train_id <- result.try(uri.percent_decode(train_id))
     let train_id = rt.TrainId(train_id)
 
     let trip = dict.get(gtfs.trips, train_id)
     use stops <- result.map(trip)
-    use arrival <- list.filter_map(stops)
+    let stops =
+      list.filter_map(stops, fn(arrival) {
+        let stop =
+          state.schedule.stops
+          |> dict.get(arrival.stop_id)
+        let time = arrival.time
+        case time |> min_from_now {
+          dt if dt >= 0 -> Ok(stop_li(stop, time, train_id, highlighted_stop))
+          _ -> Error(Nil)
+        }
+      })
 
-    let stop =
-      state.schedule.stops
-      |> dict.get(arrival.stop_id)
-    let time = arrival.time
-    case time |> min_from_now {
-      dt if dt >= 0 -> Ok(stop_li(stop, time, train_id, highlighted_stop))
-      _ -> Error(Nil)
-    }
+    #(stops, last_updated)
   }
 
-  let stops_list = case stops {
-    Error(Nil) -> html.p([], [html.text("Could not find train.")])
-    Ok(stops) -> html.ol([attribute.class("stops-list")], stops)
+  let body = case data {
+    Error(Nil) -> [html.p([], [html.text("Could not find train.")])]
+    Ok(#(stops, last_updated)) -> [
+      html.p([], [
+        html.text(
+          "Last updated "
+          <> last_updated |> timestamp.to_rfc3339(duration.hours(-4)),
+        ),
+      ]),
+      html.ol([attribute.class("stops-list")], stops),
+    ]
   }
-  let body = [
-    html.p([], [
-      html.text(
-        "Last updated "
-        <> last_updated |> timestamp.to_rfc3339(duration.hours(-4)),
-      ),
-    ]),
-    stops_list,
-  ]
 
   #(Body(body:), wisp.response(200))
 }
