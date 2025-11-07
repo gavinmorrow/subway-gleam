@@ -9,11 +9,15 @@ pub type LustreRes(msg) {
   Body(body: List(element.Element(msg)))
 }
 
-pub fn lustre_res(
+pub fn try_lustre_res(
   req: wisp.Request,
-  handle_request: fn(wisp.Request) -> #(LustreRes(msg), wisp.Response),
+  handle_request: fn(wisp.Request) ->
+    Result(#(LustreRes(msg), wisp.Response), #(LustreRes(msg), wisp.Response)),
 ) -> wisp.Response {
-  let #(html, res) = handle_request(req)
+  let #(html, res) = case handle_request(req) {
+    Error(res) -> res
+    Ok(res) -> res
+  }
   let html = to_html(html)
 
   response.set_body(
@@ -22,6 +26,13 @@ pub fn lustre_res(
       |> element.to_document_string
       |> wisp.Text,
   )
+}
+
+pub fn lustre_res(
+  req: wisp.Request,
+  handle_request: fn(wisp.Request) -> #(LustreRes(msg), wisp.Response),
+) -> wisp.Response {
+  try_lustre_res(req, fn(req) { handle_request(req) |> Ok })
 }
 
 fn to_html(lustre_res: LustreRes(msg)) -> element.Element(msg) {

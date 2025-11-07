@@ -4,9 +4,7 @@ import gleam/int
 import gleam/list
 import gleam/option
 import gleam/order
-import gleam/pair
 import gleam/result
-import gleam/string
 import gleam/time/duration
 import gleam/time/timestamp
 import gleam/uri
@@ -16,7 +14,9 @@ import lustre/element/html
 import subway_gleam/st
 import wisp
 
-import subway_gleam/lustre_middleware.{Body, Document, lustre_res}
+import subway_gleam/lustre_middleware.{
+  Body, Document, lustre_res, try_lustre_res,
+}
 import subway_gleam/rt
 import subway_gleam/state
 
@@ -38,12 +38,37 @@ pub fn not_found(req: wisp.Request) -> wisp.Response {
   #(Body(body:), res)
 }
 
+fn display_error(
+  err: rt.FetchGtfsError,
+) -> #(lustre_middleware.LustreRes(msg), wisp.Response) {
+  case err {
+    rt.HttpError(_) -> todo
+    rt.InvalidStopId(stop_id) -> #(
+      Document(head: [html.title([], "Error: Invalid stop")], body: [
+        html.p([], [html.text("Error: Invalid stop id: " <> stop_id)]),
+      ]),
+      wisp.response(400),
+    )
+    rt.ParseError(_) -> todo
+    rt.UnknownStop(stop_id) -> #(
+      Document(head: [html.title([], "Error: Unknown stop")], body: [
+        html.p([], [
+          html.text(
+            "Error: Could not find stop " <> st.stop_id_to_string(stop_id),
+          ),
+        ]),
+      ]),
+      wisp.response(404),
+    )
+  }
+}
+
 pub fn stop(
   req: wisp.Request,
   state: state.State,
   stop_id: String,
 ) -> wisp.Response {
-  use req <- lustre_res(req)
+  use req <- try_lustre_res(req)
 
   // TODO: make this a function?
   let highlighted_train =
@@ -55,78 +80,66 @@ pub fn stop(
     |> result.try(uri.percent_decode)
     |> result.map(rt.TrainId)
 
-  let data = {
-    use stop_id <- result.try(
-      st.parse_stop_id(stop_id)
-      |> result.replace_error(rt.InvalidStopId(stop_id)),
-    )
-    use stop <- result.try(
-      state.schedule.stops
-      |> dict.get(stop_id)
-      |> result.replace_error(rt.UnknownStop(stop_id)),
-    )
+  use stop_id <- result.try(
+    st.parse_stop_id(stop_id)
+    |> result.replace_error(rt.InvalidStopId(stop_id) |> display_error),
+  )
+  use stop <- result.try(
+    state.schedule.stops
+    |> dict.get(stop_id)
+    |> result.replace_error(rt.UnknownStop(stop_id) |> display_error),
+  )
 
-    let state.RtData(current: gtfs, last_updated:) = state.fetch_gtfs(state)
+  let state.RtData(current: gtfs, last_updated:) = state.fetch_gtfs(state)
 
-    Ok(#(
-      stop,
-      last_updated,
-      gtfs.arrivals
-        |> dict.get(stop_id)
-        |> result.unwrap(or: [])
-        |> list.sort(by: fn(a, b) {
-          timestamp.compare(a.time, b.time) |> order.negate
-        })
-        |> list.filter(keeping: fn(a) {
-          // Strip out times that are in the past
-          case timestamp.compare(a.time, timestamp.system_time()) {
-            order.Eq | order.Gt -> True
-            order.Lt -> False
-          }
-        })
-        |> list.fold(from: #([], []), with: fn(acc, update) {
-          let #(uptown_acc, downtown_acc) = acc
-          let li = arrival_li(update, state.schedule, gtfs, highlighted_train)
-          case update.stop_id.direction {
-            // Treat no direction as uptown
-            // TODO: figure out what should be done here. is it even be possible?
-            option.Some(st.North) | option.None -> #(
-              [li, ..uptown_acc],
-              downtown_acc,
-            )
-            option.Some(st.South) -> #(uptown_acc, [li, ..downtown_acc])
-          }
-        })
-        |> pair.map_first(list.take(_, 10))
-        |> pair.map_second(list.take(_, 10)),
-    ))
-  }
+  let #(uptown, downtown) =
+    gtfs.arrivals
+    |> dict.get(stop_id)
+    |> result.unwrap(or: [])
+    |> list.sort(by: fn(a, b) {
+      timestamp.compare(a.time, b.time) |> order.negate
+    })
+    |> list.filter(keeping: fn(a) {
+      // Strip out times that are in the past
+      case timestamp.compare(a.time, timestamp.system_time()) {
+        order.Eq | order.Gt -> True
+        order.Lt -> False
+      }
+    })
+    |> list.fold(from: #([], []), with: fn(acc, update) {
+      let #(uptown_acc, downtown_acc) = acc
+      let li = arrival_li(update, state.schedule, gtfs, highlighted_train)
+      case update.stop_id.direction {
+        // Treat no direction as uptown
+        // TODO: figure out what should be done here. is it even be possible?
+        option.Some(st.North) | option.None -> #(
+          [li, ..uptown_acc],
+          downtown_acc,
+        )
+        option.Some(st.South) -> #(uptown_acc, [li, ..downtown_acc])
+      }
+    })
+  let uptown = uptown |> list.take(from: _, up_to: 10)
+  let downtown = downtown |> list.take(from: _, up_to: 10)
 
-  let head = case data {
-    Ok(#(stop, _, _)) -> [html.title([], "Trains at " <> stop.name)]
-    Error(_) -> [html.title([], "Error!")]
-  }
+  let head = [html.title([], "Trains at " <> stop.name)]
+  let body = [
+    html.h1([], [
+      html.text(stop.name),
+    ]),
+    html.p([], [
+      html.text(
+        "Last updated "
+        <> { last_updated |> timestamp.to_rfc3339(duration.hours(-4)) },
+      ),
+    ]),
+    html.h2([], [html.text("Uptown")]),
+    html.ul([attribute.class("arrival-list")], uptown),
+    html.h2([], [html.text("Downtown")]),
+    html.ul([attribute.class("arrival-list")], downtown),
+  ]
 
-  let body = case data {
-    Ok(#(stop, last_updated, #(uptown, downtown))) -> [
-      html.h1([], [
-        html.text(stop.name),
-      ]),
-      html.p([], [
-        html.text(
-          "Last updated "
-          <> { last_updated |> timestamp.to_rfc3339(duration.hours(-4)) },
-        ),
-      ]),
-      html.h2([], [html.text("Uptown")]),
-      html.ul([attribute.class("arrival-list")], uptown),
-      html.h2([], [html.text("Downtown")]),
-      html.ul([attribute.class("arrival-list")], downtown),
-    ]
-    Error(err) -> [html.p([], [html.text("Error: " <> string.inspect(err))])]
-  }
-
-  #(Document(head:, body:), wisp.response(200))
+  Ok(#(Document(head:, body:), wisp.response(200)))
 }
 
 fn arrival_li(
@@ -214,7 +227,7 @@ pub fn train(
   state: state.State,
   train_id: String,
 ) -> wisp.Response {
-  use req <- lustre_middleware.lustre_res(req)
+  use req <- try_lustre_res(req)
 
   // TODO: make this a function?
   let highlighted_stop =
@@ -225,43 +238,57 @@ pub fn train(
     |> list.key_find("stop_id")
     |> result.try(st.parse_stop_id)
 
-  let data = {
-    let state.RtData(current: gtfs, last_updated:) = state.fetch_gtfs(state)
+  let state.RtData(current: gtfs, last_updated:) = state.fetch_gtfs(state)
 
-    use train_id <- result.try(uri.percent_decode(train_id))
-    let train_id = rt.TrainId(train_id)
+  use train_id <- result.try(
+    uri.percent_decode(train_id)
+    |> result.replace_error({
+      #(
+        Body([html.text("Train id URI encoding is invalid.")]),
+        wisp.response(400),
+      )
+    }),
+  )
+  let train_id = rt.TrainId(train_id)
 
-    let trip = dict.get(gtfs.trips, train_id)
-    use stops <- result.map(trip)
-    let stops =
-      list.filter_map(stops, fn(arrival) {
-        let stop =
-          state.schedule.stops
-          |> dict.get(arrival.stop_id)
-        let time = arrival.time
-        case time |> min_from_now {
-          dt if dt >= 0 -> Ok(stop_li(stop, time, train_id, highlighted_stop))
-          _ -> Error(Nil)
-        }
-      })
+  let trip =
+    dict.get(gtfs.trips, train_id)
+    |> result.replace_error({
+      let rt.TrainId(train_id) = train_id
+      #(
+        Document(head: [html.title([], "Error: Could not find train")], body: [
+          html.p([], [
+            html.text("Could not find train with identifier " <> train_id),
+          ]),
+        ]),
+        wisp.response(404),
+      )
+    })
+  use stops <- result.try(trip)
 
-    #(stops, last_updated)
-  }
+  let stops =
+    list.filter_map(stops, fn(arrival) {
+      let stop =
+        state.schedule.stops
+        |> dict.get(arrival.stop_id)
+      let time = arrival.time
+      case time |> min_from_now {
+        dt if dt >= 0 -> Ok(stop_li(stop, time, train_id, highlighted_stop))
+        _ -> Error(Nil)
+      }
+    })
 
-  let body = case data {
-    Error(Nil) -> [html.p([], [html.text("Could not find train.")])]
-    Ok(#(stops, last_updated)) -> [
-      html.p([], [
-        html.text(
-          "Last updated "
-          <> last_updated |> timestamp.to_rfc3339(duration.hours(-4)),
-        ),
-      ]),
-      html.ol([attribute.class("stops-list")], stops),
-    ]
-  }
+  let body = [
+    html.p([], [
+      html.text(
+        "Last updated "
+        <> last_updated |> timestamp.to_rfc3339(duration.hours(-4)),
+      ),
+    ]),
+    html.ol([attribute.class("stops-list")], stops),
+  ]
 
-  #(Body(body:), wisp.response(200))
+  Ok(#(Body(body:), wisp.response(200)))
 }
 
 fn stop_li(
