@@ -48,9 +48,8 @@ pub fn stop(
   // TODO: make this a function?
   let highlighted_train =
     req.query
-    |> option.map(uri.parse_query)
     |> option.to_result(Nil)
-    |> result.flatten
+    |> result.try(uri.parse_query)
     |> result.unwrap(or: [])
     |> list.key_find("train_id")
     |> result.try(uri.percent_decode)
@@ -220,9 +219,8 @@ pub fn train(
   // TODO: make this a function?
   let highlighted_stop =
     req.query
-    |> option.map(uri.parse_query)
     |> option.to_result(Nil)
-    |> result.flatten
+    |> result.try(uri.parse_query)
     |> result.unwrap(or: [])
     |> list.key_find("stop_id")
     |> result.try(st.parse_stop_id)
