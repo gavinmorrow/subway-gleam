@@ -11,13 +11,13 @@ import gleam/uri
 import lustre/attribute
 import lustre/element
 import lustre/element/html
-import subway_gleam/st
 import wisp
 
 import subway_gleam/lustre_middleware.{
   Body, Document, lustre_res, try_lustre_res,
 }
 import subway_gleam/rt
+import subway_gleam/st
 import subway_gleam/state
 
 pub fn index(req: wisp.Request) -> wisp.Response {
