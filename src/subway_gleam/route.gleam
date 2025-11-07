@@ -38,31 +38,6 @@ pub fn not_found(req: wisp.Request) -> wisp.Response {
   #(Body(body:), res)
 }
 
-fn display_error(
-  err: rt.FetchGtfsError,
-) -> #(lustre_middleware.LustreRes(msg), wisp.Response) {
-  case err {
-    rt.HttpError(_) -> todo
-    rt.InvalidStopId(stop_id) -> #(
-      Document(head: [html.title([], "Error: Invalid stop")], body: [
-        html.p([], [html.text("Error: Invalid stop id: " <> stop_id)]),
-      ]),
-      wisp.response(400),
-    )
-    rt.ParseError(_) -> todo
-    rt.UnknownStop(stop_id) -> #(
-      Document(head: [html.title([], "Error: Unknown stop")], body: [
-        html.p([], [
-          html.text(
-            "Error: Could not find stop " <> st.stop_id_to_string(stop_id),
-          ),
-        ]),
-      ]),
-      wisp.response(404),
-    )
-  }
-}
-
 pub fn stop(
   req: wisp.Request,
   state: state.State,
@@ -82,12 +57,26 @@ pub fn stop(
 
   use stop_id <- result.try(
     st.parse_stop_id(stop_id)
-    |> result.replace_error(rt.InvalidStopId(stop_id) |> display_error),
+    |> result.replace_error(#(
+      Document(head: [html.title([], "Error: Invalid stop")], body: [
+        html.p([], [html.text("Error: Invalid stop id: " <> stop_id)]),
+      ]),
+      wisp.response(400),
+    )),
   )
   use stop <- result.try(
     state.schedule.stops
     |> dict.get(stop_id)
-    |> result.replace_error(rt.UnknownStop(stop_id) |> display_error),
+    |> result.replace_error(#(
+      Document(head: [html.title([], "Error: Unknown stop")], body: [
+        html.p([], [
+          html.text(
+            "Error: Could not find stop " <> st.stop_id_to_string(stop_id),
+          ),
+        ]),
+      ]),
+      wisp.response(404),
+    )),
   )
 
   let state.RtData(current: gtfs, last_updated:) = state.fetch_gtfs(state)

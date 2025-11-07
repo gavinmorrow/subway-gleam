@@ -84,8 +84,6 @@ pub const all_feeds = [
 pub type FetchGtfsError {
   HttpError(httpc.HttpError)
   ParseError(protobin.ParseError)
-  InvalidStopId(String)
-  UnknownStop(st.StopId)
 }
 
 fn gtfs_rt_feed_path(feed: GtfsRtFeed) -> String {
