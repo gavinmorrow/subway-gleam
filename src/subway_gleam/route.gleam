@@ -57,26 +57,12 @@ pub fn stop(
 
   use stop_id <- result.try(
     st.parse_stop_id(stop_id)
-    |> result.replace_error(#(
-      Document(head: [html.title([], "Error: Invalid stop")], body: [
-        html.p([], [html.text("Error: Invalid stop id: " <> stop_id)]),
-      ]),
-      wisp.response(400),
-    )),
+    |> result.replace_error(error_invalid_stop(stop_id)),
   )
   use stop <- result.try(
     state.schedule.stops
     |> dict.get(stop_id)
-    |> result.replace_error(#(
-      Document(head: [html.title([], "Error: Unknown stop")], body: [
-        html.p([], [
-          html.text(
-            "Error: Could not find stop " <> st.stop_id_to_string(stop_id),
-          ),
-        ]),
-      ]),
-      wisp.response(404),
-    )),
+    |> result.replace_error(error_unknown_stop(stop_id)),
   )
 
   let state.RtData(current: gtfs, last_updated:) = state.fetch_gtfs(state)
@@ -129,6 +115,32 @@ pub fn stop(
   ]
 
   Ok(#(Document(head:, body:), wisp.response(200)))
+}
+
+fn error_invalid_stop(
+  stop_id: String,
+) -> #(lustre_middleware.LustreRes(a), wisp.Response) {
+  #(
+    Document(head: [html.title([], "Error: Invalid stop")], body: [
+      html.p([], [html.text("Error: Invalid stop id: " <> stop_id)]),
+    ]),
+    wisp.response(400),
+  )
+}
+
+fn error_unknown_stop(
+  stop_id: st.StopId,
+) -> #(lustre_middleware.LustreRes(b), wisp.Response) {
+  #(
+    Document(head: [html.title([], "Error: Unknown stop")], body: [
+      html.p([], [
+        html.text(
+          "Error: Could not find stop " <> st.stop_id_to_string(stop_id),
+        ),
+      ]),
+    ]),
+    wisp.response(404),
+  )
 }
 
 fn arrival_li(
@@ -231,12 +243,7 @@ pub fn train(
 
   use train_id <- result.try(
     uri.percent_decode(train_id)
-    |> result.replace_error({
-      #(
-        Body([html.text("Train id URI encoding is invalid.")]),
-        wisp.response(400),
-      )
-    }),
+    |> result.replace_error(error_invalid_train_id_encoding()),
   )
   let train_id = rt.TrainId(train_id)
 
@@ -244,14 +251,7 @@ pub fn train(
     dict.get(gtfs.trips, train_id)
     |> result.replace_error({
       let rt.TrainId(train_id) = train_id
-      #(
-        Document(head: [html.title([], "Error: Could not find train")], body: [
-          html.p([], [
-            html.text("Could not find train with identifier " <> train_id),
-          ]),
-        ]),
-        wisp.response(404),
-      )
+      error_could_not_find_train(train_id)
     })
   use stops <- result.try(trip)
 
@@ -278,6 +278,26 @@ pub fn train(
   ]
 
   Ok(#(Body(body:), wisp.response(200)))
+}
+
+fn error_invalid_train_id_encoding() -> #(
+  lustre_middleware.LustreRes(c),
+  wisp.Response,
+) {
+  #(Body([html.text("Train id URI encoding is invalid.")]), wisp.response(400))
+}
+
+fn error_could_not_find_train(
+  train_id: String,
+) -> #(lustre_middleware.LustreRes(d), wisp.Response) {
+  #(
+    Document(head: [html.title([], "Error: Could not find train")], body: [
+      html.p([], [
+        html.text("Could not find train with identifier " <> train_id),
+      ]),
+    ]),
+    wisp.response(404),
+  )
 }
 
 fn stop_li(
