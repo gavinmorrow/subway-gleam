@@ -3,6 +3,7 @@ import gleam/list
 import gleam/otp/actor
 import gleam/result
 import gleam/time/timestamp
+import mta_nyct_stations/mta_nyct_stations
 
 import subway_gleam/rt
 import subway_gleam/st
@@ -11,6 +12,7 @@ pub type State {
   State(
     priv_dir: String,
     schedule: st.Schedule,
+    stations: List(mta_nyct_stations.StationComplex),
     rt_actor: actor.Started(process.Subject(RtActorMessage)),
   )
 }

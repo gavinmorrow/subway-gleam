@@ -137,16 +137,20 @@ fn stop_decoder() -> decode.Decoder(Stop(option.Option(Direction))) {
   use name <- decode.field("stop_name", decode.string)
   use lat <- decode.field(
     "stop_lat",
-    util.decode_parse_str_field("lat", float.parse, 0.0),
+    util.decode_parse_str_field(named: "lat", with: float.parse, default: 0.0),
   )
   use lon <- decode.field(
     "stop_lon",
-    util.decode_parse_str_field("lon", float.parse, 0.0),
+    util.decode_parse_str_field(named: "lon", with: float.parse, default: 0.0),
   )
   use location_type <- decode.optional_field(
     "location_type",
     option.None,
-    util.decode_parse_str_field("location_type", int.parse, 0)
+    util.decode_parse_str_field(
+      named: "location_type",
+      with: int.parse,
+      default: 0,
+    )
       |> decode.map(option.Some),
   )
   use parent_station <- decode.optional_field(

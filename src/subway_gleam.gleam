@@ -1,6 +1,8 @@
 import gleam/erlang/process
 import gleam/otp/actor
+import gleam/result
 import mist
+import mta_nyct_stations/mta_nyct_stations
 import repeatedly
 import wisp
 import wisp/wisp_mist
@@ -18,8 +20,13 @@ pub fn main() -> Nil {
     // st.parse(bits)
     schedule_sample.schedule() |> Ok
   }
+  let assert Ok(stations) = {
+    mta_nyct_stations.fetch_bin()
+    |> result.map_error(mta_nyct_stations.HttpError)
+    |> result.try(mta_nyct_stations.parse)
+  }
   let assert Ok(rt_actor) = state.rt_actor()
-  let state = state.State(priv_dir:, schedule:, rt_actor:)
+  let state = state.State(priv_dir:, schedule:, stations:, rt_actor:)
 
   repeatedly.call(10 * 1000, Nil, fn(_state, _i) {
     actor.send(state.rt_actor.data, state.Update)
