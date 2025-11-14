@@ -5,9 +5,9 @@ import gleam/time/duration
 import gleam/time/timestamp
 
 pub fn decode_parse_str_field(
-  name: String,
-  parse: fn(String) -> Result(a, Nil),
-  default: a,
+  named name: String,
+  with parse: fn(String) -> Result(a, Nil),
+  default default: a,
 ) -> decode.Decoder(a) {
   use str <- decode.then(decode.string)
   parse(str)
