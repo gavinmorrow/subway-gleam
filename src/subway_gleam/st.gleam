@@ -151,6 +151,7 @@ fn stop_decoder() -> decode.Decoder(Stop) {
 }
 
 pub type StopId {
+  // Maybe instead of `Option` use the generic trick?
   StopId(route: Route, id: Int, direction: option.Option(Direction))
 }
 
