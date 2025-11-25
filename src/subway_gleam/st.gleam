@@ -242,7 +242,10 @@ pub fn parse_stop_id(from str: String) -> Result(StopId, Nil) {
   // Parse each part
   use id <- result.try(int.parse(id_tens <> id_ones))
   // Route needs to come after id because it requires an id
-  use route <- result.try(parse_route(from: route_id, at: id))
+  use route <- result.try(parse_route_from_stop_id_prefix(
+    from: route_id,
+    at: id,
+  ))
   use direction <- result.try(parse_optional_direction(direction))
 
   StopId(route:, id:, direction:) |> Ok
@@ -250,7 +253,10 @@ pub fn parse_stop_id(from str: String) -> Result(StopId, Nil) {
 
 /// The stop number/`id` is needed b/c the Si and Sf share an identifier ("S"),
 /// and the only way to differentiate is via the stop number.
-fn parse_route(from str: String, at id: Int) -> Result(Route, Nil) {
+fn parse_route_from_stop_id_prefix(
+  from str: String,
+  at id: Int,
+) -> Result(Route, Nil) {
   case str {
     "1" -> Ok(N1)
     "2" -> Ok(N2)
