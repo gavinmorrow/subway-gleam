@@ -152,10 +152,14 @@ fn stop_decoder() -> decode.Decoder(Stop) {
 
 pub type StopId {
   // Maybe instead of `Option` use the generic trick?
-  StopId(route: Route, id: Int, direction: option.Option(Direction))
+  StopId(
+    /// A route followed by a two-digit number (e.g. `A01`).
+    id: String,
+    direction: option.Option(Direction),
+  )
 }
 
-const stop_id_default = StopId(route: A, id: 0, direction: option.None)
+const stop_id_default = StopId(id: "A01", direction: option.None)
 
 fn stop_id_decoder() -> decode.Decoder(StopId) {
   use stop_id <- decode.then(decode.string)
@@ -169,13 +173,8 @@ fn stop_id_decoder() -> decode.Decoder(StopId) {
 }
 
 pub fn stop_id_to_string(stop_id: StopId) -> String {
-  let StopId(route:, id:, direction:) = stop_id
-
-  let route = route |> route_to_string
-  let id = id |> int.to_string |> string.pad_start(to: 2, with: "0")
-  let direction = direction |> direction_to_string
-
-  route <> id <> direction
+  let StopId(id:, direction:) = stop_id
+  id <> direction_to_string(direction)
 }
 
 pub fn erase_direction(stop_id: StopId) -> StopId {
@@ -227,108 +226,20 @@ pub type Route {
 }
 
 pub fn parse_stop_id(from str: String) -> Result(StopId, Nil) {
-  // TODO: using bytes instead of graphemes would be way more performant, but
-  //       there's nothing in the gleam stdlib for it.
-  use #(route_id, rest) <- result.try(string.pop_grapheme(str))
-  use #(id_tens, rest) <- result.try(string.pop_grapheme(rest))
-  use #(id_ones, rest) <- result.try(string.pop_grapheme(rest))
+  // The stop id should be either 3 or 4 digits
+  // (route + two digit id + optional direction)
+  let len = string.length(str)
+  use <- bool.guard(when: !{ len == 3 || len == 4 }, return: Error(Nil))
+
+  // id is the first 3 chars
+  let id = string.slice(from: str, at_index: 0, length: 3)
 
   // Direction is optional
-  let #(direction, rest) = string.pop_grapheme(rest) |> result.unwrap(#("", ""))
-
-  // Ensure there is nothing left afterwards
-  use <- bool.guard(when: !string.is_empty(rest), return: Error(Nil))
-
-  // Parse each part
-  use id <- result.try(int.parse(id_tens <> id_ones))
+  let direction = string.last(str) |> result.try(parse_optional_direction)
   // Route needs to come after id because it requires an id
-  use route <- result.try(parse_route_from_stop_id_prefix(
-    from: route_id,
-    at: id,
-  ))
-  use direction <- result.try(parse_optional_direction(direction))
+  use direction <- result.try(direction)
 
-  StopId(route:, id:, direction:) |> Ok
-}
-
-/// The stop number/`id` is needed b/c the Si and Sf share an identifier ("S"),
-/// and the only way to differentiate is via the stop number.
-fn parse_route_from_stop_id_prefix(
-  from str: String,
-  at id: Int,
-) -> Result(Route, Nil) {
-  case str {
-    "1" -> Ok(N1)
-    "2" -> Ok(N2)
-    "3" -> Ok(N3)
-    "4" -> Ok(N4)
-    "5" -> Ok(N5)
-    "6" -> Ok(N6)
-    "7" -> Ok(N7)
-
-    "A" -> Ok(A)
-    "C" -> Ok(C)
-    "E" -> Ok(E)
-
-    "B" -> Ok(B)
-    "D" -> Ok(D)
-    "F" -> Ok(F)
-    "M" -> Ok(M)
-
-    "N" -> Ok(N)
-    "Q" -> Ok(Q)
-    "R" -> Ok(R)
-    "W" -> Ok(W)
-
-    "G" -> Ok(G)
-
-    "J" -> Ok(J)
-    "Z" -> Ok(Z)
-
-    "L" -> Ok(L)
-
-    // In the GTFS, the Sf and Si routes have the same prefix (S).
-    // The Sf gets stop numbers [1, 8] while the Sir gets [9, 31].
-    // The normal S gets the prefix 9, while Sr gets H (which it shares with
-    // both Far-Rockaway-bound and Rockaway-Park-bound A trains).
-    "9" -> Ok(S)
-    "H" -> Ok(Sr)
-    "S" if id < 9 -> Sf |> Ok
-    "S" if id >= 9 -> Si |> Ok
-
-    _ -> Error(Nil)
-  }
-}
-
-pub fn route_to_string(route: Route) -> String {
-  case route {
-    A -> "A"
-    B -> "B"
-    C -> "C"
-    D -> "D"
-    E -> "E"
-    F -> "F"
-    G -> "G"
-    J -> "J"
-    L -> "L"
-    M -> "M"
-    N -> "N"
-    N1 -> "1"
-    N2 -> "2"
-    N3 -> "3"
-    N4 -> "4"
-    N5 -> "5"
-    N6 -> "6"
-    N7 -> "7"
-    Q -> "Q"
-    R -> "R"
-    S -> "9"
-    Sf -> "S"
-    Si -> "S"
-    Sr -> "H"
-    W -> "W"
-    Z -> "Z"
-  }
+  StopId(id:, direction:) |> Ok
 }
 
 /// This exists so that the app can convert Route <=> String losslessly.
