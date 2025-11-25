@@ -37,15 +37,7 @@ pub fn stop(
     |> result.map(rt.TrainId)
 
   use stop_id <- result.try(
-    st.parse_stop_id(stop_id)
-    |> result.try(fn(stop_id) {
-      // Ensure that no direction is present
-      let #(stop_id, direction) = stop_id
-      case direction {
-        option.None -> Ok(stop_id)
-        option.Some(_) -> Error(Nil)
-      }
-    })
+    st.parse_stop_id_no_direction(stop_id)
     |> result.replace_error(error_invalid_stop(stop_id)),
   )
   use stop <- result.try(
