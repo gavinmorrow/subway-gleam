@@ -275,6 +275,14 @@ pub fn parse_stop_id(
   #(StopId(id), direction) |> Ok
 }
 
+pub fn parse_stop_id_no_direction(from str: String) -> Result(StopId, Nil) {
+  use #(id, direction) <- result.try(parse_stop_id(from: str))
+  case direction {
+    option.None -> Ok(id)
+    option.Some(_) -> Error(Nil)
+  }
+}
+
 /// This exists so that the app can convert Route <=> String losslessly.
 /// It is essentially string.inspect.
 pub fn route_to_long_id(route: Route) -> String {

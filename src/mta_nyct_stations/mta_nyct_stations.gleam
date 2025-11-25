@@ -166,7 +166,7 @@ pub fn station_complex_decoder() -> decode.Decoder(StationComplex) {
     "GTFS Stop IDs",
     util.decode_parse_str_field(
       named: "gtfs_stop_ids",
-      with: list_string_parse(_, on: "; ", with: st.parse_stop_id),
+      with: list_string_parse(_, on: "; ", with: st.parse_stop_id_no_direction),
       default: [],
     ),
   )
