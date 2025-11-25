@@ -14,6 +14,7 @@ import gleam/option
 import gleam/pair
 import gleam/result
 import gleam/string
+import gleam/time/duration
 import gsv
 
 import subway_gleam/internal/ffi
@@ -38,6 +39,7 @@ pub type Schedule {
       Stop(option.Option(Direction)),
     ),
     trips: Trips,
+    services: dict.Dict(Route, Service),
   )
 }
 
@@ -48,6 +50,7 @@ pub type FetchError {
   CsvError(gsv.Error)
   MissingFile(name: String)
   DecodeError(in_file: String, error: List(decode.DecodeError))
+  InvalidStopTimes
 }
 
 pub fn parse(bits: BitArray) -> Result(Schedule, FetchError) {
@@ -98,8 +101,32 @@ pub fn parse(bits: BitArray) -> Result(Schedule, FetchError) {
     list.fold(over: stops, from: dict.new(), with: fn(acc, stop) {
       acc |> dict.insert(for: #(stop.id, stop.direction), insert: stop)
     })
+  use stop_times <- result.try(parse_file("stop_times.txt", stop_time_decoder()))
+  use services <- result.try(
+    list.try_fold(over: stop_times, from: dict.new(), with: fn(acc, stop) {
+      use route <- result.map(dict.get(trips.routes, stop.trip_id))
 
-  Schedule(stops:, trips:) |> Ok
+      use service <- dict.upsert(in: acc, update: route)
+      let service = option.unwrap(service, or: empty_service(route))
+
+      let stop = dict.get(stops, #(stop.stop_id, option.Some(stop.direction)))
+      case stop {
+        Error(Nil) -> service
+        Ok(stop) -> {
+          // Direction doesn't matter for stops
+          let stop = Stop(..stop, direction: Nil)
+          Service(..service, stops: [stop, ..service.stops])
+        }
+      }
+    })
+    |> result.replace_error(InvalidStopTimes),
+  )
+
+  Schedule(stops:, trips:, services:) |> Ok
+}
+
+fn empty_service(route: Route) -> Service {
+  Service(route:, stops: [])
 }
 
 pub fn fetch_bin(feed: Feed) -> Result(BitArray, httpc.HttpError) {
@@ -118,6 +145,105 @@ fn feed_path(feed: Feed) -> String {
     Regular -> "gtfs_subway.zip"
     Supplemented -> "gtfs_supplemented.zip"
   }
+}
+
+pub type Service {
+  Service(
+    route: Route,
+    // Should this be a list of `StopId`s? this might use a lot of memory.
+    // This will also probably have to be more complicated than this; it can't
+    // represent branches, rush hour only stops, etc,
+    stops: List(Stop(Nil)),
+  )
+}
+
+pub type StopTime {
+  /// Primary key: `#(trip_id, stop_sequence)`
+  StopTime(
+    /// Identifies a trip.
+    trip_id: TripId,
+    /// Identifies the serviced stop. All stops serviced during a trip
+    /// must have a record in stop_times.txt. Referenced locations must be
+    /// stops/platforms, i.e. their stops.location_type value must be 0 or
+    /// empty. A stop may be serviced multiple times in the same trip, and
+    /// multiple trips and routes may service the same stop.
+    stop_id: StopId,
+    direction: Direction,
+    /// Arrival time at the stop for a specific trip in the time zone specified
+    /// by agency.agency_timezone, not stops.stop_timezone.
+    /// 
+    /// If there are not separate times for arrival and departure at a stop,
+    /// arrival_time and departure_time should be the same.
+    /// 
+    /// For times occurring after midnight on the service day, enter the time as
+    /// a value greater than 24:00:00 in HH:MM:SS.
+    arrival_time: duration.Duration,
+    /// Departure time at the stop for a specific trip in the time zone
+    /// specified by agency.agency_timezone, not stops.stop_timezone.
+    /// 
+    /// If there are not separate times for arrival and departure at a stop,
+    /// arrival_time and departure_time should be the same.
+    /// 
+    /// For times occurring after midnight on the service day, enter the time as
+    /// a value greater than 24:00:00 in HH:MM:SS.
+    departure_time: duration.Duration,
+    /// Order of stops, location groups, or GeoJSON locations for a particular
+    /// trip. The values must increase along the trip but do not need to be
+    /// consecutive.
+    stop_sequence: Int,
+  )
+}
+
+fn stop_time_decoder() -> decode.Decoder(StopTime) {
+  use trip_id <- decode.field("trip_id", decode.string)
+  let trip_id = TripId(trip_id)
+  use #(stop_id, direction) <- decode.field(
+    "stop_id",
+    stop_id_decoder()
+      |> decode.then(fn(stop_id) {
+        // There must be a direction
+        case stop_id {
+          #(stop_id, option.Some(direction)) ->
+            decode.success(#(stop_id, direction))
+          #(stop_id, option.None) ->
+            decode.failure(#(stop_id, North), "StopId (with direction)")
+        }
+      }),
+  )
+  use arrival_time <- decode.field(
+    "arrival_time",
+    util.decode_parse_str_field(
+      named: "arrival_time",
+      with: parse_time,
+      default: duration.seconds(0),
+    ),
+  )
+  use departure_time <- decode.field(
+    "departure_time",
+    util.decode_parse_str_field(
+      named: "departure_time",
+      with: parse_time,
+      default: duration.seconds(0),
+    ),
+  )
+  use stop_sequence <- decode.field(
+    "stop_sequence",
+    util.decode_parse_str_field(
+      named: "stop_sequence",
+      with: int.parse,
+      default: 0,
+    ),
+  )
+
+  StopTime(
+    trip_id:,
+    stop_id:,
+    direction:,
+    arrival_time:,
+    departure_time:,
+    stop_sequence:,
+  )
+  |> decode.success
 }
 
 pub type Stop(direction) {
@@ -359,14 +485,22 @@ pub fn direction_to_string(direction: option.Option(Direction)) -> String {
 }
 
 pub type Trips {
-  Trips(headsigns: dict.Dict(ShapeId, String))
+  Trips(headsigns: dict.Dict(ShapeId, String), routes: dict.Dict(TripId, Route))
+}
+
+pub type TripId {
+  TripId(String)
+}
+
+fn extract_shape_id(from trip_id: TripId) {
+  let TripId(id) = trip_id
+  string.split(id, on: "_") |> list.last |> result.map(ShapeId)
 }
 
 fn trips_from_rows(rows: List(Trip)) -> Trips {
   let headsigns =
     list.fold(over: rows, from: dict.new(), with: fn(headsigns, trip) {
-      let shape_id_from_trip_id =
-        string.split(trip.id, on: "_") |> list.last |> result.map(ShapeId)
+      let shape_id_from_trip_id = extract_shape_id(from: trip.id)
       let shape_id = case trip.shape_id, shape_id_from_trip_id {
         option.Some(trip_shape_id), Ok(shape_id_from_trip_id) -> {
           // TODO: get rid of assert
@@ -388,23 +522,69 @@ fn trips_from_rows(rows: List(Trip)) -> Trips {
         }
       }
     })
-  Trips(headsigns:)
+
+  let routes =
+    list.fold(over: rows, from: dict.new(), with: fn(routes, trip) {
+      dict.insert(into: routes, for: trip.id, insert: trip.route_id)
+    })
+
+  Trips(headsigns:, routes:)
 }
 
 /// Intended for when parsing the raw rows, before parsing `Trips`
 type Trip {
-  Trip(id: String, headsign: String, shape_id: option.Option(ShapeId))
+  Trip(
+    id: TripId,
+    route_id: Route,
+    headsign: String,
+    shape_id: option.Option(ShapeId),
+  )
 }
 
 fn trip_decoder() -> decode.Decoder(Trip) {
   use id <- decode.field("trip_id", decode.string)
+  let id = TripId(id)
+  use route_id <- decode.field("route_id", route_id_in_trip_decoder())
   use headsign <- decode.field("trip_headsign", decode.string)
   use shape_id <- decode.optional_field(
     "shape_id",
     option.None,
     shape_id_decoder() |> decode.map(option.Some),
   )
-  decode.success(Trip(id:, headsign:, shape_id:))
+  decode.success(Trip(id:, route_id:, headsign:, shape_id:))
+}
+
+fn route_id_in_trip_decoder() -> decode.Decoder(Route) {
+  use route <- decode.then(decode.string)
+  case route {
+    "A" -> A |> decode.success
+    "B" -> B |> decode.success
+    "C" -> C |> decode.success
+    "D" -> D |> decode.success
+    "E" -> E |> decode.success
+    "F" | "FX" -> F |> decode.success
+    "G" -> G |> decode.success
+    "J" -> J |> decode.success
+    "L" -> L |> decode.success
+    "M" -> M |> decode.success
+    "N" -> N |> decode.success
+    "1" -> N1 |> decode.success
+    "2" -> N2 |> decode.success
+    "3" -> N3 |> decode.success
+    "4" -> N4 |> decode.success
+    "5" -> N5 |> decode.success
+    "6" | "6X" -> N6 |> decode.success
+    "7" | "7X" -> N7 |> decode.success
+    "Q" -> Q |> decode.success
+    "R" -> R |> decode.success
+    "GS" -> S |> decode.success
+    "FS" -> Sf |> decode.success
+    "SI" -> Si |> decode.success
+    "H" -> Sr |> decode.success
+    "W" -> W |> decode.success
+    "Z" -> Z |> decode.success
+    route -> decode.failure(A, "Route (in trip) (" <> route <> ")")
+  }
 }
 
 pub opaque type ShapeId {
@@ -421,4 +601,38 @@ pub fn parse_shape_id(from trip_id: String) -> Result(ShapeId, Nil) {
   |> string.split(on: "_")
   |> list.last
   |> result.map(ShapeId)
+}
+
+/// Parses a static GTFS `Time`.
+/// 
+/// Time in the HH:MM:SS format (H:MM:SS is also accepted). The time is measured
+/// from "noon minus 12h" of the service day (effectively midnight except for
+/// days on which daylight savings time changes occur). For times occurring
+/// after midnight on the service day, enter the time as a value greater than
+/// 24:00:00 in HH:MM:SS.
+/// 
+/// Example: 14:30:00 for 2:30PM or 25:35:00 for 1:35AM on the next day.
+fn parse_time(from timestamp: String) -> Result(duration.Duration, Nil) {
+  case string.split(timestamp, on: ":") {
+    [hours, minutes, seconds] -> {
+      // Hours may be specified with one digit.
+      // Ensure adherence to the spec in terms of length (HH:MM:SS or H:MM:SS).
+      use <- bool.guard(when: string.length(hours) > 2, return: Error(Nil))
+      use <- bool.guard(when: string.length(minutes) != 2, return: Error(Nil))
+      use <- bool.guard(when: string.length(seconds) != 2, return: Error(Nil))
+
+      use hours <- result.try(int.parse(hours))
+      use minutes <- result.try(int.parse(minutes))
+      use seconds <- result.try(int.parse(seconds))
+
+      // Hours may be >24 to roll over to next day.
+      // Ensure that min/sec are sane though.
+      use <- bool.guard(when: minutes >= 60, return: Error(Nil))
+      use <- bool.guard(when: seconds >= 60, return: Error(Nil))
+
+      let total_sec = hours * 60 * 60 + minutes * 60 + seconds
+      duration.seconds(total_sec) |> Ok
+    }
+    _ -> Error(Nil)
+  }
 }
