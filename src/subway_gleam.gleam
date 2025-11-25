@@ -16,7 +16,7 @@ pub fn main() -> Nil {
     // Haven't done this yet b/c it wastes internet in prototyping
     // let assert Ok(bits) = simplifile.read_bits("./gtfs_subway.zip")
     // st.parse(bits)
-    schedule.schedule() |> Ok
+    schedule_sample.schedule() |> Ok
   }
   let assert Ok(rt_actor) = state.rt_actor()
   let state = state.State(priv_dir:, schedule:, rt_actor:)
