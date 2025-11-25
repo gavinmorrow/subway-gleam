@@ -14,8 +14,8 @@ import subway_gleam/st
 // TODO: find a better name
 pub type Data {
   Data(
-    arrivals: dict.Dict(st.StopId, List(TrainStopping)),
-    final_stops: dict.Dict(st.ShapeId, st.StopId),
+    arrivals: dict.Dict(st.StopId(Nil), List(TrainStopping)),
+    final_stops: dict.Dict(st.ShapeId, st.StopId(st.Direction)),
     trips: dict.Dict(TrainId, List(TrainStopping)),
   )
 }
@@ -46,7 +46,7 @@ pub type TrainStopping {
   TrainStopping(
     trip: gtfs_rt_nyct.TripDescriptor,
     time: timestamp.Timestamp,
-    stop_id: st.StopId,
+    stop_id: st.StopId(st.Direction),
   )
 }
 
@@ -195,7 +195,7 @@ pub fn analyze(raw: gtfs_rt_nyct.FeedMessage) -> Data {
 fn parse_trip_update(
   trip: gtfs_rt_nyct.TripDescriptor,
   stop_time_updates: List(gtfs_rt_nyct.StopTimeUpdate),
-) -> List(#(st.StopId, TrainStopping)) {
+) -> List(#(st.StopId(st.Direction), TrainStopping)) {
   use acc, stop <- list.fold(over: stop_time_updates |> list.reverse, from: [])
 
   let train_stopping = {
@@ -207,6 +207,7 @@ fn parse_trip_update(
     let time = timestamp.from_unix_seconds(unix_secs)
 
     use stop_id <- result.try(st.parse_stop_id(stop.stop_id))
+    use stop_id <- result.try(st.stop_id_has_direction(stop_id))
 
     TrainStopping(trip:, time:, stop_id:)
     |> Ok

@@ -31,8 +31,8 @@ pub type Feed {
   Supplemented
 }
 
-pub type Schedule {
-  Schedule(stops: dict.Dict(StopId, Stop), trips: Trips)
+pub type Schedule(direction) {
+  Schedule(stops: dict.Dict(StopId(direction), Stop(direction)), trips: Trips)
 }
 
 pub type FetchError {
@@ -44,7 +44,9 @@ pub type FetchError {
   DecodeError(in_file: String, error: List(decode.DecodeError))
 }
 
-pub fn parse(bits: BitArray) -> Result(Schedule, FetchError) {
+pub fn parse(
+  bits: BitArray,
+) -> Result(Schedule(option.Option(Direction)), FetchError) {
   use files <- result.try(ffi.unzip(bits) |> result.replace_error(UnzipError))
   let files = dict.from_list(files)
   let files = {
@@ -114,18 +116,18 @@ fn feed_path(feed: Feed) -> String {
   }
 }
 
-pub type Stop {
+pub type Stop(direction) {
   Stop(
-    id: StopId,
+    id: StopId(direction),
     name: String,
     lat: Float,
     lon: Float,
     location_type: option.Option(Int),
-    parent_station: option.Option(StopId),
+    parent_station: option.Option(StopId(Nil)),
   )
 }
 
-fn stop_decoder() -> decode.Decoder(Stop) {
+fn stop_decoder() -> decode.Decoder(Stop(option.Option(Direction))) {
   use id <- decode.field("stop_id", stop_id_decoder())
   use name <- decode.field("stop_name", decode.string)
   use lat <- decode.field(
@@ -145,23 +147,26 @@ fn stop_decoder() -> decode.Decoder(Stop) {
   use parent_station <- decode.optional_field(
     "parent_station",
     option.None,
-    stop_id_decoder() |> decode.map(option.Some),
+    stop_id_directionless_decoder() |> decode.map(option.Some),
   )
+
   decode.success(Stop(id:, name:, lat:, lon:, location_type:, parent_station:))
 }
 
-pub type StopId {
+pub type StopId(direction) {
   // Maybe instead of `Option` use the generic trick?
   StopId(
     /// A route followed by a two-digit number (e.g. `A01`).
     id: String,
-    direction: option.Option(Direction),
+    direction: direction,
   )
 }
 
 const stop_id_default = StopId(id: "A01", direction: option.None)
 
-fn stop_id_decoder() -> decode.Decoder(StopId) {
+const stop_id_directionless_default = StopId(id: "A01", direction: Nil)
+
+fn stop_id_decoder() -> decode.Decoder(StopId(option.Option(Direction))) {
   use stop_id <- decode.then(decode.string)
   case parse_stop_id(from: stop_id) {
     Error(Nil) -> {
@@ -172,13 +177,39 @@ fn stop_id_decoder() -> decode.Decoder(StopId) {
   }
 }
 
-pub fn stop_id_to_string(stop_id: StopId) -> String {
+fn stop_id_directionless_decoder() -> decode.Decoder(StopId(Nil)) {
+  use stop_id <- decode.then(stop_id_decoder())
+  case stop_id_is_directionless(stop_id) {
+    Error(Nil) -> decode.failure(stop_id_directionless_default, "StopId(Nil)")
+    Ok(stop_id) -> decode.success(stop_id)
+  }
+}
+
+pub fn stop_id_has_direction(
+  stop_id: StopId(option.Option(Direction)),
+) -> Result(StopId(Direction), Nil) {
+  case stop_id.direction {
+    option.None -> Error(Nil)
+    option.Some(direction) -> Ok(StopId(..stop_id, direction:))
+  }
+}
+
+pub fn stop_id_is_directionless(
+  stop_id: StopId(option.Option(Direction)),
+) -> Result(StopId(Nil), Nil) {
+  case stop_id.direction {
+    option.None -> Ok(StopId(..stop_id, direction: Nil))
+    option.Some(_) -> Error(Nil)
+  }
+}
+
+pub fn stop_id_to_string(stop_id: StopId(option.Option(Direction))) -> String {
   let StopId(id:, direction:) = stop_id
   id <> direction_to_string(direction)
 }
 
-pub fn erase_direction(stop_id: StopId) -> StopId {
-  StopId(..stop_id, direction: option.None)
+pub fn erase_direction(stop_id: StopId(a)) -> StopId(Nil) {
+  StopId(..stop_id, direction: Nil)
 }
 
 pub type Direction {
@@ -225,7 +256,9 @@ pub type Route {
   Si
 }
 
-pub fn parse_stop_id(from str: String) -> Result(StopId, Nil) {
+pub fn parse_stop_id(
+  from str: String,
+) -> Result(StopId(option.Option(Direction)), Nil) {
   // The stop id should be either 3 or 4 digits
   // (route + two digit id + optional direction)
   let len = string.length(str)
