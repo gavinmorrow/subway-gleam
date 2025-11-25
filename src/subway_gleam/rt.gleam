@@ -3,7 +3,6 @@ import gleam/http/request
 import gleam/httpc
 import gleam/list
 import gleam/option
-import gleam/pair
 import gleam/result
 import gleam/time/timestamp
 import gtfs_rt_nyct
@@ -14,8 +13,8 @@ import subway_gleam/st
 // TODO: find a better name
 pub type Data {
   Data(
-    arrivals: dict.Dict(st.StopId(Nil), List(TrainStopping)),
-    final_stops: dict.Dict(st.ShapeId, st.StopId(st.Direction)),
+    arrivals: dict.Dict(st.StopId, List(TrainStopping)),
+    final_stops: dict.Dict(st.ShapeId, #(st.StopId, st.Direction)),
     trips: dict.Dict(TrainId, List(TrainStopping)),
   )
 }
@@ -46,7 +45,8 @@ pub type TrainStopping {
   TrainStopping(
     trip: gtfs_rt_nyct.TripDescriptor,
     time: timestamp.Timestamp,
-    stop_id: st.StopId(st.Direction),
+    stop_id: st.StopId,
+    direction: st.Direction,
   )
 }
 
@@ -151,34 +151,40 @@ pub fn analyze(raw: gtfs_rt_nyct.FeedMessage) -> Data {
           |> option.map(dict.insert(
             into: acc.trips,
             for: _,
-            insert: new_arrivals |> list.map(pair.second),
+            insert: new_arrivals,
           ))
           |> option.unwrap(or: acc.trips)
         let acc = Data(..acc, trips:)
 
-        list.fold(over: new_arrivals, from: acc, with: fn(acc, value) {
-          let #(stop_id, train_stopping) = value
-          let stop_id = st.erase_direction(stop_id)
-          acc
-          |> data_map_arrivals(fn(arrivals) {
-            dict.upsert(in: arrivals, update: stop_id, with: fn(cur) {
-              case cur {
-                option.None -> [train_stopping]
-                option.Some(cur) -> [train_stopping, ..cur]
+        list.fold(over: new_arrivals, from: acc, with: fn(acc, train_stopping) {
+          Data(
+            ..acc,
+            arrivals: {
+              dict.upsert(
+                in: acc.arrivals,
+                update: train_stopping.stop_id,
+                with: fn(cur) {
+                  case cur {
+                    option.None -> [train_stopping]
+                    option.Some(cur) -> [train_stopping, ..cur]
+                  }
+                },
+              )
+            },
+            final_stops: {
+              case
+                final_stop,
+                train_stopping.trip.trip_id |> st.parse_shape_id
+              {
+                Ok(final_stop), Ok(shape_id) ->
+                  dict.insert(into: acc.final_stops, for: shape_id, insert: #(
+                    final_stop.stop_id,
+                    final_stop.direction,
+                  ))
+                _, _ -> acc.final_stops
               }
-            })
-          })
-          |> data_map_final_stops(fn(final_stops) {
-            case final_stop, train_stopping.trip.trip_id |> st.parse_shape_id {
-              Ok(#(final_stop, _)), Ok(shape_id) ->
-                dict.insert(
-                  into: final_stops,
-                  for: shape_id,
-                  insert: final_stop,
-                )
-              _, _ -> final_stops
-            }
-          })
+            },
+          )
         })
       }
       gtfs_rt_nyct.VehiclePosition(
@@ -195,7 +201,7 @@ pub fn analyze(raw: gtfs_rt_nyct.FeedMessage) -> Data {
 fn parse_trip_update(
   trip: gtfs_rt_nyct.TripDescriptor,
   stop_time_updates: List(gtfs_rt_nyct.StopTimeUpdate),
-) -> List(#(st.StopId(st.Direction), TrainStopping)) {
+) -> List(TrainStopping) {
   use acc, stop <- list.fold(over: stop_time_updates |> list.reverse, from: [])
 
   let train_stopping = {
@@ -206,15 +212,15 @@ fn parse_trip_update(
     let gtfs_rt_nyct.UnixTime(unix_secs) = unix
     let time = timestamp.from_unix_seconds(unix_secs)
 
-    use stop_id <- result.try(st.parse_stop_id(stop.stop_id))
-    use stop_id <- result.try(st.stop_id_has_direction(stop_id))
+    use #(stop_id, direction) <- result.try(st.parse_stop_id(stop.stop_id))
+    use direction <- result.try(direction |> option.to_result(Nil))
 
-    TrainStopping(trip:, time:, stop_id:)
+    TrainStopping(trip:, time:, stop_id:, direction:)
     |> Ok
   }
 
   case train_stopping {
     Error(Nil) -> acc
-    Ok(train_stopping) -> [#(train_stopping.stop_id, train_stopping), ..acc]
+    Ok(train_stopping) -> [train_stopping, ..acc]
   }
 }

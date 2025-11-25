@@ -2,6 +2,7 @@ import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option
+import gleam/pair
 import gleam/result
 import gleam/time/duration
 import gleam/time/timestamp
@@ -31,6 +32,7 @@ pub fn train(
     |> result.unwrap(or: [])
     |> list.key_find("stop_id")
     |> result.try(st.parse_stop_id)
+    |> result.map(pair.first)
 
   let state.RtData(current: gtfs, last_updated:) = state.fetch_gtfs(state)
 
@@ -52,7 +54,7 @@ pub fn train(
     list.filter_map(stops, fn(arrival) {
       let stop =
         state.schedule.stops
-        |> dict.get(arrival.stop_id)
+        |> dict.get(#(arrival.stop_id, option.Some(arrival.direction)))
       let time = arrival.time
       case time |> util.min_from_now {
         dt if dt >= 0 -> Ok(stop_li(stop, time, train_id, highlighted_stop))
@@ -94,7 +96,7 @@ fn error_could_not_find_train(
 }
 
 fn stop_li(
-  stop: Result(st.Stop, Nil),
+  stop: Result(st.Stop(a), Nil),
   time: timestamp.Timestamp,
   train_id: rt.TrainId,
   highlighted_stop: Result(st.StopId, Nil),
@@ -105,7 +107,7 @@ fn stop_li(
     |> result.unwrap(or: "<Unknown stop>")
   let stop_url =
     result.map(stop, fn(stop) {
-      let stop_id = stop.id |> st.erase_direction |> st.stop_id_to_string
+      let stop_id = stop.id |> st.stop_id_to_string(direction: option.None)
       let train_id = train_id |> rt.train_id_to_string |> uri.percent_encode
       let query = uri.query_to_string([#("train_id", train_id)])
       "/stop/" <> stop_id <> "?" <> query

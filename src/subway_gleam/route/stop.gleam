@@ -3,6 +3,7 @@ import gleam/int
 import gleam/list
 import gleam/option
 import gleam/order
+import gleam/pair
 import gleam/result
 import gleam/time/duration
 import gleam/time/timestamp
@@ -37,11 +38,19 @@ pub fn stop(
 
   use stop_id <- result.try(
     st.parse_stop_id(stop_id)
+    |> result.try(fn(stop_id) {
+      // Ensure that no direction is present
+      let #(stop_id, direction) = stop_id
+      case direction {
+        option.None -> Ok(stop_id)
+        option.Some(_) -> Error(Nil)
+      }
+    })
     |> result.replace_error(error_invalid_stop(stop_id)),
   )
   use stop <- result.try(
     state.schedule.stops
-    |> dict.get(stop_id)
+    |> dict.get(#(stop_id, option.None))
     |> result.replace_error(error_unknown_stop(stop_id)),
   )
 
@@ -64,14 +73,9 @@ pub fn stop(
     |> list.fold(from: #([], []), with: fn(acc, update) {
       let #(uptown_acc, downtown_acc) = acc
       let li = arrival_li(update, state.schedule, gtfs, highlighted_train)
-      case update.stop_id.direction {
-        // Treat no direction as uptown
-        // TODO: figure out what should be done here. is it even be possible?
-        option.Some(st.North) | option.None -> #(
-          [li, ..uptown_acc],
-          downtown_acc,
-        )
-        option.Some(st.South) -> #(uptown_acc, [li, ..downtown_acc])
+      case update.direction {
+        st.North -> #([li, ..uptown_acc], downtown_acc)
+        st.South -> #(uptown_acc, [li, ..downtown_acc])
       }
     })
   let uptown = uptown |> list.take(from: _, up_to: 10)
@@ -115,7 +119,8 @@ fn error_unknown_stop(
     Document(head: [html.title([], "Error: Unknown stop")], body: [
       html.p([], [
         html.text(
-          "Error: Could not find stop " <> st.stop_id_to_string(stop_id),
+          "Error: Could not find stop "
+          <> st.stop_id_to_string(stop_id, option.None),
         ),
       ]),
     ]),
@@ -129,7 +134,7 @@ fn arrival_li(
   gtfs: rt.Data,
   highlighted_train: Result(rt.TrainId, Nil),
 ) -> element.Element(msg) {
-  let rt.TrainStopping(trip:, time:, stop_id: _) = update
+  let rt.TrainStopping(trip:, time:, stop_id: _, direction: _) = update
 
   let headsign = {
     use shape_id <- result.try(st.parse_shape_id(from: trip.trip_id))
@@ -138,6 +143,7 @@ fn arrival_li(
       |> dict.get(shape_id)
       |> result.lazy_or(fn() {
         dict.get(gtfs.final_stops, shape_id)
+        |> result.map(pair.map_second(_, option.Some))
         |> result.try(dict.get(schedule.stops, _))
         |> result.map(fn(stop) { stop.name })
         // TODO: maybe don't want to always have a value?
@@ -156,7 +162,10 @@ fn arrival_li(
     |> option.map(fn(id) {
       let query =
         uri.query_to_string([
-          #("stop_id", update.stop_id |> st.stop_id_to_string),
+          #(
+            "stop_id",
+            st.stop_id_to_string(update.stop_id, option.Some(update.direction)),
+          ),
         ])
       "/train/" <> id <> "?" <> query
     })
