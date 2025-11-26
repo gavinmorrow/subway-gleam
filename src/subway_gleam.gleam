@@ -6,7 +6,7 @@ import wisp
 import wisp/wisp_mist
 
 import subway_gleam/route
-import subway_gleam/schedule
+import subway_gleam/schedule_sample
 import subway_gleam/state
 
 pub fn main() -> Nil {
