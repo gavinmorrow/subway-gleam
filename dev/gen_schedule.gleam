@@ -20,7 +20,7 @@ fn shape_id(shape_id: String) -> ShapeId {
   shape_id
 }
 
-/// A sample schedule to use that doesn't take 15sec to parse.
+/// A sample schedule to use that doesn't take forever to parse.
 pub fn schedule() {
   // <schedule>
 }
@@ -28,7 +28,7 @@ pub fn schedule() {
 
 pub fn main() -> Nil {
   io.println_error("Fetching...")
-  let assert Ok(bits) = st.fetch_bin(st.Supplemented)
+  let assert Ok(bits) = st.fetch_bin(st.Regular)
   io.println_error("Parsing...")
   let assert Ok(schedule) = st.parse(bits)
   io.println_error("Generating...")
@@ -42,9 +42,14 @@ pub fn main() -> Nil {
   io.println_error("Writing to src/subway_gleam/schedule_sample.gleam...")
   let assert Ok(Nil) = simplifile.write(to: path, contents: full_code)
 
-  io.println_error("Formatting code...")
-  let assert Ok(_) =
-    shellout.command("gleam", with: ["format", path], in: ".", opt: [])
+  // io.println_error("Formatting code...")
+  // let assert Ok(_) =
+  //   shellout.command("gleam", with: ["format", path], in: ".", opt: [])
+
+  io.println_error("Checking code...")
+  let assert Ok(gleam_check_out) =
+    shellout.command("gleam", with: ["check"], in: ".", opt: [])
+  io.println_error(gleam_check_out)
 
   io.println_error("Done.")
   Nil
