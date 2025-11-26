@@ -13,6 +13,7 @@ import gleam/list
 import gleam/option
 import gleam/pair
 import gleam/result
+import gleam/set
 import gleam/string
 import gleam/time/duration
 import gsv
@@ -109,15 +110,10 @@ pub fn parse(bits: BitArray) -> Result(Schedule, FetchError) {
       use service <- dict.upsert(in: acc, update: route)
       let service = option.unwrap(service, or: empty_service(route))
 
-      let stop = dict.get(stops, #(stop.stop_id, option.Some(stop.direction)))
-      case stop {
-        Error(Nil) -> service
-        Ok(stop) -> {
-          // Direction doesn't matter for stops
-          let stop = Stop(..stop, direction: Nil)
-          Service(..service, stops: [stop, ..service.stops])
-        }
-      }
+      Service(
+        ..service,
+        stops: set.insert(into: service.stops, this: stop.stop_id),
+      )
     })
     |> result.replace_error(InvalidStopTimes),
   )
@@ -126,7 +122,7 @@ pub fn parse(bits: BitArray) -> Result(Schedule, FetchError) {
 }
 
 fn empty_service(route: Route) -> Service {
-  Service(route:, stops: [])
+  Service(route:, stops: set.new(), connections: set.new())
 }
 
 pub fn fetch_bin(feed: Feed) -> Result(BitArray, httpc.HttpError) {
@@ -150,10 +146,11 @@ fn feed_path(feed: Feed) -> String {
 pub type Service {
   Service(
     route: Route,
-    // Should this be a list of `StopId`s? this might use a lot of memory.
     // This will also probably have to be more complicated than this; it can't
     // represent branches, rush hour only stops, etc,
-    stops: List(Stop(Nil)),
+    stops: set.Set(StopId),
+    /// How the train travels between stops. This helps form a directed graph.
+    connections: set.Set(#(StopId, StopId)),
   )
 }
 

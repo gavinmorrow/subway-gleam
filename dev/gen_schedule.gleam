@@ -9,18 +9,25 @@ const path = "src/subway_gleam/schedule_sample.gleam"
 const code = "//// A sample schedule to use that doesn't take forever to parse.
 
 import subway_gleam/st.{
-  type ShapeId, North, Schedule, South, Stop, StopId, Trips, parse_shape_id,
+  type ShapeId, A, B, C, D, E, F, G, J, L, M, N, N1, N2, N3, N4, N5, N6, N7,
+  North, Q, R, S, Schedule, Service, Sf, Si, South, Sr, Stop, StopId, TripId,
+  Trips, W, Z, parse_shape_id,
 }
 
 import gleam/dict
 import gleam/option.{None, Some}
+import gleam/set
 
 fn shape_id(shape_id: String) -> ShapeId {
   let assert Ok(shape_id) = parse_shape_id(shape_id)
   shape_id
 }
 
-/// A sample schedule to use that doesn't take 15sec to parse.
+fn set(d: dict.Dict(a, b)) -> set.Set(a) {
+  d |> dict.keys |> set.from_list
+}
+
+/// A sample schedule to use that doesn't take forever to parse.
 pub fn schedule() {
   // <schedule>
 }
@@ -28,7 +35,7 @@ pub fn schedule() {
 
 pub fn main() -> Nil {
   io.println_error("Fetching...")
-  let assert Ok(bits) = st.fetch_bin(st.Supplemented)
+  let assert Ok(bits) = st.fetch_bin(st.Regular)
   io.println_error("Parsing...")
   let assert Ok(schedule) = st.parse(bits)
   io.println_error("Generating...")
@@ -36,15 +43,21 @@ pub fn main() -> Nil {
     string.inspect(schedule)
     // The ShapeId constructor is opaque, so there's a helper func
     |> string.replace(each: "ShapeId(", with: "shape_id(")
+    |> string.replace(each: "Set(", with: "set(")
   let full_code =
     string.replace(in: code, each: "// <schedule>", with: schedule_str)
 
   io.println_error("Writing to src/subway_gleam/schedule_sample.gleam...")
   let assert Ok(Nil) = simplifile.write(to: path, contents: full_code)
 
-  io.println_error("Formatting code...")
-  let assert Ok(_) =
-    shellout.command("gleam", with: ["format", path], in: ".", opt: [])
+  // io.println_error("Formatting code...")
+  // let assert Ok(_) =
+  //   shellout.command("gleam", with: ["format", path], in: ".", opt: [])
+
+  io.println_error("Checking code...")
+  let assert Ok(gleam_check_out) =
+    shellout.command("gleam", with: ["check"], in: ".", opt: [])
+  io.println_error(gleam_check_out)
 
   io.println_error("Done.")
   Nil
