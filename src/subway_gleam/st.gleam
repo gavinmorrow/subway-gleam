@@ -411,6 +411,7 @@ pub fn parse_stop_id_no_direction(from str: String) -> Result(StopId, Nil) {
 
 /// This exists so that the app can convert Route <=> String losslessly.
 /// It is essentially string.inspect.
+/// It is the opposite of route_id_long_to_route().
 pub fn route_to_long_id(route: Route) -> String {
   case route {
     A -> "A"
@@ -443,7 +444,7 @@ pub fn route_to_long_id(route: Route) -> String {
 }
 
 /// This exists so that the app can convert Route <=> String losslessly.
-/// It is the opposite of route_to_string_long().
+/// It is the opposite of route_to_long_id().
 pub fn route_id_long_to_route(route: String) -> Result(Route, Nil) {
   case route {
     "A" -> A |> Ok
