@@ -494,37 +494,47 @@ fn extract_shape_id(from trip_id: TripId) {
 }
 
 fn trips_from_rows(rows: List(Trip)) -> Trips {
-  let headsigns =
-    list.fold(over: rows, from: dict.new(), with: fn(headsigns, trip) {
-      let shape_id_from_trip_id = extract_shape_id(from: trip.id)
-      let shape_id = case trip.shape_id, shape_id_from_trip_id {
-        option.Some(trip_shape_id), Ok(shape_id_from_trip_id) -> {
-          // TODO: get rid of assert
-          assert trip_shape_id == shape_id_from_trip_id
-          trip_shape_id
-        }
-        option.Some(shape_id), Error(Nil) -> shape_id
-        option.None, Ok(shape_id) -> shape_id
-        // TODO: get rid of panic
-        option.None, Error(Nil) -> panic as "no shape id"
-      }
-      case dict.get(headsigns, shape_id) {
-        Error(Nil) ->
-          dict.insert(into: headsigns, for: shape_id, insert: trip.headsign)
-        Ok(headsign) -> {
-          // TODO: get rid of assert
-          assert headsign == trip.headsign
-          headsigns
-        }
-      }
-    })
+  do_trips_from_rows(rows, dict.new(), dict.new())
+}
 
-  let routes =
-    list.fold(over: rows, from: dict.new(), with: fn(routes, trip) {
-      dict.insert(into: routes, for: trip.id, insert: trip.route_id)
-    })
+fn do_trips_from_rows(rows: List(Trip), acc_headsigns, acc_routes) {
+  case rows {
+    [] -> Trips(headsigns: acc_headsigns, routes: acc_routes)
+    [trip, ..rest] -> {
+      let acc_headsigns = {
+        let shape_id_from_trip_id = extract_shape_id(from: trip.id)
+        let shape_id = case trip.shape_id, shape_id_from_trip_id {
+          option.Some(trip_shape_id), Ok(shape_id_from_trip_id) -> {
+            // TODO: get rid of assert
+            assert trip_shape_id == shape_id_from_trip_id
+            trip_shape_id
+          }
+          option.Some(shape_id), Error(Nil) -> shape_id
+          option.None, Ok(shape_id) -> shape_id
+          // TODO: get rid of panic
+          option.None, Error(Nil) -> panic as "no shape id"
+        }
+        case dict.get(acc_headsigns, shape_id) {
+          Error(Nil) ->
+            dict.insert(
+              into: acc_headsigns,
+              for: shape_id,
+              insert: trip.headsign,
+            )
+          Ok(headsign) -> {
+            // TODO: get rid of assert
+            assert headsign == trip.headsign
+            acc_headsigns
+          }
+        }
+      }
 
-  Trips(headsigns:, routes:)
+      let acc_routes =
+        dict.insert(into: acc_routes, for: trip.id, insert: trip.route_id)
+
+      do_trips_from_rows(rest, acc_headsigns, acc_routes)
+    }
+  }
 }
 
 /// Intended for when parsing the raw rows, before parsing `Trips`
