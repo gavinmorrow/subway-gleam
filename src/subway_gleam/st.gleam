@@ -112,11 +112,7 @@ pub fn parse(bits: BitArray) -> Result(Schedule, FetchError) {
       let stop = dict.get(stops, #(stop.stop_id, option.Some(stop.direction)))
       case stop {
         Error(Nil) -> service
-        Ok(stop) -> {
-          // Direction doesn't matter for stops
-          let stop = Stop(..stop, direction: Nil)
-          Service(..service, stops: [stop, ..service.stops])
-        }
+        Ok(Stop(id:, ..)) -> Service(..service, stops: [id, ..service.stops])
       }
     })
     |> result.replace_error(InvalidStopTimes),
@@ -150,10 +146,9 @@ fn feed_path(feed: Feed) -> String {
 pub type Service {
   Service(
     route: Route,
-    // Should this be a list of `StopId`s? this might use a lot of memory.
     // This will also probably have to be more complicated than this; it can't
     // represent branches, rush hour only stops, etc,
-    stops: List(Stop(Nil)),
+    stops: List(StopId),
   )
 }
 
