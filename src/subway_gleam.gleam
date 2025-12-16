@@ -48,6 +48,7 @@ fn handler(state: state.State, req: wisp.Request) -> wisp.Response {
     [] -> route.index(req)
     ["stop", stop_id] -> route.stop(req, state, stop_id)
     ["train", train_id] -> route.train(req, state, train_id)
+    ["line", route_id] -> route.line(req, state, route_id)
     _ -> route.not_found(req)
   }
 }

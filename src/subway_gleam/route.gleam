@@ -1,4 +1,5 @@
 import lustre/element/html
+import subway_gleam/route/line
 import subway_gleam/route/stop
 import subway_gleam/route/train
 import wisp
@@ -26,3 +27,5 @@ pub fn not_found(req: wisp.Request) -> wisp.Response {
 pub const stop = stop.stop
 
 pub const train = train.train
+
+pub const line = line.line
