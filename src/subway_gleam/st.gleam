@@ -11,8 +11,8 @@ import gleam/httpc
 import gleam/int
 import gleam/list
 import gleam/option
-import gleam/pair
 import gleam/result
+import gleam/set
 import gleam/string
 import gleam/time/duration
 import gsv
@@ -54,30 +54,9 @@ pub type FetchError {
 }
 
 pub fn parse(bits: BitArray) -> Result(Schedule, FetchError) {
+  // unzipping
   use files <- result.try(ffi.unzip(bits) |> result.replace_error(UnzipError))
   let files = dict.from_list(files)
-  let files = {
-    use _file_name, file <- dict.map_values(files)
-    use file <- result.try(
-      bit_array.to_string(file) |> result.replace_error(InvalidUtf8),
-    )
-    use rows <- result.map(
-      gsv.to_dicts(file, separator: ",")
-      |> result.map_error(CsvError),
-    )
-
-    // Transform into List(dynamic.Dynamic)
-    list.map(rows, fn(row) {
-      row
-      |> dict.to_list
-      |> list.map(fn(kv) {
-        kv
-        |> pair.map_first(dynamic.string)
-        |> pair.map_second(dynamic.string)
-      })
-      |> dynamic.properties
-    })
-  }
 
   let parse_file = fn(name: String, decoder: decode.Decoder(a)) -> Result(
     List(a),
@@ -86,21 +65,44 @@ pub fn parse(bits: BitArray) -> Result(Schedule, FetchError) {
     use file <- result.try(
       files
       |> dict.get(name)
-      |> result.replace_error(MissingFile(name))
-      |> result.flatten,
+      |> result.replace_error(MissingFile(name)),
     )
-    let rows = list.map(file, decode.run(_, decoder))
-    result.all(rows) |> result.map_error(DecodeError(name, _))
+
+    // parsing csv
+    use file <- result.try(
+      bit_array.to_string(file) |> result.replace_error(InvalidUtf8),
+    )
+    use rows <- result.try(
+      gsv.to_dicts(file, separator: ",")
+      |> result.map_error(CsvError),
+    )
+
+    // convert to Dynamic then decode
+    list.try_map(rows, fn(row) {
+      row
+      |> dict.to_list
+      // Transform into dynamic.Dynamic
+      |> list.map(fn(kv) {
+        let #(k, v) = kv
+        #(dynamic.string(k), dynamic.string(v))
+      })
+      |> dynamic.properties
+      // Actually decode
+      |> decode.run(decoder)
+    })
+    |> result.map_error(DecodeError(name, _))
   }
 
   // TODO: reverse order
   use trips <- result.try(parse_file("trips.txt", trip_decoder()))
   let trips = trips_from_rows(trips)
+
   use stops <- result.try(parse_file("stops.txt", stop_decoder()))
   let stops =
     list.fold(over: stops, from: dict.new(), with: fn(acc, stop) {
       acc |> dict.insert(for: #(stop.id, stop.direction), insert: stop)
     })
+
   use stop_times <- result.try(parse_file("stop_times.txt", stop_time_decoder()))
   use services <- result.try(
     list.try_fold(over: stop_times, from: dict.new(), with: fn(acc, stop) {
@@ -109,11 +111,7 @@ pub fn parse(bits: BitArray) -> Result(Schedule, FetchError) {
       use service <- dict.upsert(in: acc, update: route)
       let service = option.unwrap(service, or: empty_service(route))
 
-      let stop = dict.get(stops, #(stop.stop_id, option.Some(stop.direction)))
-      case stop {
-        Error(Nil) -> service
-        Ok(Stop(id:, ..)) -> Service(..service, stops: [id, ..service.stops])
-      }
+      Service(..service, stops: set.insert(stop.stop_id, into: service.stops))
     })
     |> result.replace_error(InvalidStopTimes),
   )
@@ -122,7 +120,7 @@ pub fn parse(bits: BitArray) -> Result(Schedule, FetchError) {
 }
 
 fn empty_service(route: Route) -> Service {
-  Service(route:, stops: [])
+  Service(route:, stops: set.new())
 }
 
 pub fn fetch_bin(feed: Feed) -> Result(BitArray, httpc.HttpError) {
@@ -148,7 +146,7 @@ pub type Service {
     route: Route,
     // This will also probably have to be more complicated than this; it can't
     // represent branches, rush hour only stops, etc,
-    stops: List(StopId),
+    stops: set.Set(StopId),
   )
 }
 
