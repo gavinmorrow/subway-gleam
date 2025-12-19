@@ -2,11 +2,12 @@ import gleam/erlang/process
 import gleam/otp/actor
 import mist
 import repeatedly
+import simplifile
+import subway_gleam/st
 import wisp
 import wisp/wisp_mist
 
 import subway_gleam/route
-import subway_gleam/schedule_sample
 import subway_gleam/state
 
 pub fn main() -> Nil {
@@ -14,9 +15,8 @@ pub fn main() -> Nil {
   let assert Ok(schedule) = {
     // TODO: actually fetch from internet, use `st.fetch_bin()`
     // Haven't done this yet b/c it wastes internet in prototyping
-    // let assert Ok(bits) = simplifile.read_bits("./gtfs_subway.zip")
-    // st.parse(bits)
-    schedule_sample.schedule() |> Ok
+    let assert Ok(bits) = simplifile.read_bits("./gtfs_subway.zip")
+    st.parse(bits)
   }
   let assert Ok(rt_actor) = state.rt_actor()
   let state = state.State(priv_dir:, schedule:, rt_actor:)
