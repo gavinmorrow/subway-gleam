@@ -9,6 +9,7 @@ import wisp/wisp_mist
 
 import subway_gleam/route
 import subway_gleam/state
+import subway_gleam/state/gtfs_actor
 
 pub fn main() -> Nil {
   let assert Ok(priv_dir) = wisp.priv_directory("subway_gleam")
@@ -18,11 +19,11 @@ pub fn main() -> Nil {
     let assert Ok(bits) = simplifile.read_bits("./gtfs_subway.zip")
     st.parse(bits)
   }
-  let assert Ok(rt_actor) = state.rt_actor()
-  let state = state.State(priv_dir:, schedule:, rt_actor:)
+  let assert Ok(gtfs_actor) = gtfs_actor.gtfs_actor()
+  let state = state.State(priv_dir:, schedule:, gtfs_actor:)
 
   repeatedly.call(10 * 1000, Nil, fn(_state, _i) {
-    actor.send(state.rt_actor.data, state.Update)
+    actor.send(state.gtfs_actor.data, gtfs_actor.Update)
   })
 
   wisp.configure_logger()

@@ -1,15 +1,15 @@
 import gleam/otp/actor
 import subway_gleam/st
-import subway_gleam/state/rt_actor
+import subway_gleam/state/gtfs_actor
 
 pub type State {
   State(
     priv_dir: String,
     schedule: st.Schedule,
-    rt_actor: actor.Started(rt_actor.Subject),
+    gtfs_actor: actor.Started(gtfs_actor.Subject),
   )
 }
 
-pub fn fetch_gtfs(state: State) -> rt_actor.Data {
-  actor.call(state.rt_actor.data, waiting: 100, sending: rt_actor.Get)
+pub fn fetch_gtfs(state: State) -> gtfs_actor.Data {
+  actor.call(state.gtfs_actor.data, waiting: 100, sending: gtfs_actor.Get)
 }

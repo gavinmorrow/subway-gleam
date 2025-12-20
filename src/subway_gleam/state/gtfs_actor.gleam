@@ -22,21 +22,21 @@ pub type Message {
   SetData(Result(Data, rt.FetchGtfsError))
 }
 
-pub fn rt_actor() -> Result(actor.Started(Subject), actor.StartError) {
+pub fn gtfs_actor() -> Result(actor.Started(Subject), actor.StartError) {
   actor.new_with_initialiser(60 * 1000, fn(self) {
     use data <- result.try(
-      fetch_all_feeds()
+      fetch_all_rt_feeds()
       |> result.replace_error("fetch gtfs_rt error"),
     )
     let state = State(self:, data:)
 
     actor.initialised(state) |> actor.returning(self) |> Ok
   })
-  |> actor.on_message(rt_handle_message)
+  |> actor.on_message(handle_message)
   |> actor.start
 }
 
-fn rt_handle_message(state: State, msg: Message) -> actor.Next(State, Message) {
+fn handle_message(state: State, msg: Message) -> actor.Next(State, Message) {
   case msg {
     Get(reply) -> {
       actor.send(reply, state.data)
@@ -44,7 +44,7 @@ fn rt_handle_message(state: State, msg: Message) -> actor.Next(State, Message) {
     }
     Update -> {
       process.spawn(fn() {
-        fetch_all_feeds()
+        fetch_all_rt_feeds()
         |> SetData
         |> process.send(state.self, _)
       })
@@ -56,7 +56,7 @@ fn rt_handle_message(state: State, msg: Message) -> actor.Next(State, Message) {
   }
 }
 
-fn fetch_all_feeds() -> Result(Data, rt.FetchGtfsError) {
+fn fetch_all_rt_feeds() -> Result(Data, rt.FetchGtfsError) {
   let current_time = timestamp.system_time()
 
   use data <- result.try(

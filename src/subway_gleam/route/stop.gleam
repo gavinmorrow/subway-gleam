@@ -17,6 +17,7 @@ import subway_gleam/lustre_middleware.{Document, try_lustre_res}
 import subway_gleam/rt
 import subway_gleam/st
 import subway_gleam/state
+import subway_gleam/state/gtfs_actor
 import wisp
 
 pub fn stop(
@@ -46,7 +47,7 @@ pub fn stop(
     |> result.replace_error(error_unknown_stop(stop_id)),
   )
 
-  let state.RtData(current: gtfs, last_updated:) = state.fetch_gtfs(state)
+  let gtfs_actor.Data(current: gtfs, last_updated:) = state.fetch_gtfs(state)
 
   let #(uptown, downtown) =
     gtfs.arrivals
