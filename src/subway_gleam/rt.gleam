@@ -1,5 +1,6 @@
 import gleam/dict
-import gleam/http/request
+
+// import gleam/http/request
 import gleam/httpc
 import gleam/list
 import gleam/option
@@ -7,6 +8,7 @@ import gleam/result
 import gleam/time/timestamp
 import gtfs_rt_nyct
 import protobin
+import simplifile
 
 import subway_gleam/st
 
@@ -114,14 +116,29 @@ pub fn gtfs_rt_feed_from_route(route: st.Route) -> GtfsRtFeed {
 }
 
 fn fetch_gtfs_rt_bin(feed: GtfsRtFeed) -> Result(BitArray, httpc.HttpError) {
-  let req: request.Request(BitArray) =
-    request.new()
-    |> request.set_host("api-endpoint.mta.info")
-    |> request.set_path(gtfs_rt_feed_path(feed))
-    |> request.set_body(<<>>)
+  // let req: request.Request(BitArray) =
+  //   request.new()
+  //   |> request.set_host("api-endpoint.mta.info")
+  //   |> request.set_path(gtfs_rt_feed_path(feed))
+  // |> request.set_body(<<>>)
 
-  use res <- result.try(httpc.send_bits(req))
-  res.body |> Ok
+  // use res <- result.try(httpc.send_bits(req))
+  // res.body |> Ok
+
+  // Don't fetch real data while prototyping
+  let name = case feed {
+    ACESr -> "gtfs-ace"
+    BDFMSf -> "gtfs-bdfm"
+    G -> "gtfs-g"
+    JZ -> "gtfs-jz"
+    L -> "gtfs-l"
+    NQRW -> "gtfs-nqrw"
+    S1234567 -> "gtfs"
+    Si -> "gtfs-si"
+  }
+  let path = "./gtfs_rt_samples/" <> name
+  let assert Ok(bits) = simplifile.read_bits(from: path)
+  Ok(bits)
 }
 
 pub fn fetch_gtfs(
