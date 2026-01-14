@@ -58,7 +58,7 @@ pub fn stop(
     })
     |> list.filter(keeping: fn(a) {
       // Strip out times that are in the past
-      case timestamp.compare(a.time, timestamp.system_time()) {
+      case timestamp.compare(a.time, util.current_time()) {
         order.Eq | order.Gt -> True
         order.Lt -> False
       }

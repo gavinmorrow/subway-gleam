@@ -3,6 +3,7 @@ import gleam/list
 import gleam/otp/actor
 import gleam/result
 import gleam/time/timestamp
+import subway_gleam/internal/util
 import subway_gleam/rt
 
 pub type Subject =
@@ -57,7 +58,7 @@ fn handle_message(state: State, msg: Message) -> actor.Next(State, Message) {
 }
 
 fn fetch_all_rt_feeds() -> Result(Data, rt.FetchGtfsError) {
-  let current_time = timestamp.system_time()
+  let current_time = util.current_time()
 
   use data <- result.try(
     list.try_fold(

@@ -15,9 +15,15 @@ pub fn decode_parse_str_field(
   |> result.unwrap(or: decode.failure(default, name))
 }
 
+/// This exists so that for debugging, the time can be when the feed was fetched.
+pub fn current_time() -> timestamp.Timestamp {
+  // timestamp.system_time()
+  timestamp.from_unix_seconds(1_768_327_560)
+}
+
 pub fn min_from_now(time: timestamp.Timestamp) -> Int {
   time
-  |> timestamp.difference(timestamp.system_time(), _)
+  |> timestamp.difference(current_time(), _)
   |> duration.to_seconds()
   |> float.divide(60.0)
   |> result.unwrap(0.0)
