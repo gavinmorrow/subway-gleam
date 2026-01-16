@@ -6,22 +6,32 @@ import subway_gleam/st
 
 const path = "src/subway_gleam/schedule_sample"
 
-const code_prefix = "//// A sample schedule to use that doesn't take forever to parse.
+const stops_prefix = "import subway_gleam/st.{North, South, Stop, StopId}
 
-import subway_gleam/st.{
-  type ShapeId, A, B, C, D, E, F, G, J, L, M, N, N1, N2, N3, N4, N5, N6, N7,
-  North, Q, R, S, Schedule, Service, Sf, Si, South, Sr, Stop, StopId, Trips, W,
-  Z, parse_shape_id, parse_stop_id, TripId,
+import gleam/dict
+import gleam/option.{None, Some}
+"
+
+const trips_prefix = "import subway_gleam/st.{
+  type ShapeId, A, B, C, D, E, F, G, J, L, M, N, N1, N2, N3, N4, N5, N6, N7, Q,
+  R, S, Sf, Si, Sr, TripId, Trips, W, Z, parse_shape_id,
 }
 
 import gleam/dict
-import gleam/set
-import gleam/option.{None, Some}
 
 fn shape_id(shape_id: String) -> ShapeId {
   let assert Ok(shape_id) = parse_shape_id(shape_id)
   shape_id
 }
+"
+
+const services_prefix = "import subway_gleam/st.{
+  A, B, C, D, E, F, G, J, L, M, N, N1, N2, N3, N4, N5, N6, N7, Q, R, S, Service,
+  Sf, Si, Sr, StopId, W, Z,
+}
+
+import gleam/dict
+import gleam/set
 
 fn set(dict: dict.Dict(a, b)) -> set.Set(a) {
   dict |> dict.keys |> set.from_list
@@ -56,7 +66,7 @@ pub fn main() -> Nil {
   let assert Ok(Nil) =
     simplifile.write(
       to: path <> "/stops.gleam",
-      contents: code_prefix <> "pub fn stops() {" <> stops_str <> "}",
+      contents: stops_prefix <> "pub fn stops() {" <> stops_str <> "}",
     )
   let trips_str =
     string.inspect(schedule.trips)
@@ -66,7 +76,7 @@ pub fn main() -> Nil {
   let assert Ok(Nil) =
     simplifile.write(
       to: path <> "/trips.gleam",
-      contents: code_prefix <> "pub fn trips() {" <> trips_str <> "}",
+      contents: trips_prefix <> "pub fn trips() {" <> trips_str <> "}",
     )
   let services_str =
     string.inspect(schedule.services)
@@ -76,7 +86,7 @@ pub fn main() -> Nil {
   let assert Ok(Nil) =
     simplifile.write(
       to: path <> "/services.gleam",
-      contents: code_prefix <> "pub fn services() {" <> services_str <> "}",
+      contents: services_prefix <> "pub fn services() {" <> services_str <> "}",
     )
 
   io.println_error("Writing to src/subway_gleam/schedule_sample.gleam...")
