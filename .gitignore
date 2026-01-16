@@ -5,3 +5,6 @@ erl_crash.dump
 
 # Temporary
 gtfs_subway.zip
+
+**/schedule_sample.gleam
+**/schedule_sample/**
