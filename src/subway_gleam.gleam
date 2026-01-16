@@ -1,8 +1,11 @@
+import comp_flags
 import gleam/erlang/process
 import gleam/otp/actor
+import gleam/result
 import mist
 import repeatedly
 import subway_gleam/schedule_sample
+import subway_gleam/st
 import wisp
 import wisp/wisp_mist
 
@@ -13,11 +16,13 @@ import subway_gleam/state/gtfs_actor
 pub fn main() -> Nil {
   let assert Ok(priv_dir) = wisp.priv_directory("subway_gleam")
   let assert Ok(schedule) = {
-    // TODO: actually fetch from internet, use `st.fetch_bin()`
-    // Haven't done this yet b/c it wastes internet in prototyping
-    // let assert Ok(bits) = simplifile.read_bits("./gtfs_subway.zip")
-    // st.parse(bits)
-    schedule_sample.schedule()
+    case comp_flags.use_local_st {
+      True -> schedule_sample.schedule()
+      False ->
+        st.fetch_bin(st.Regular)
+        |> result.map_error(st.HttpError)
+        |> result.try(st.parse)
+    }
   }
   let assert Ok(gtfs_actor) = gtfs_actor.gtfs_actor()
   let state = state.State(priv_dir:, schedule:, gtfs_actor:)
