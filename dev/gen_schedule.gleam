@@ -28,7 +28,8 @@ fn set(dict: dict.Dict(a, b)) -> set.Set(a) {
 }
 "
 
-const schedule_code = "
+const schedule_code = "//// A sample schedule to use that doesn't take forever to parse.
+import subway_gleam/st.{Schedule}
 import subway_gleam/schedule_sample/stops.{stops}
 import subway_gleam/schedule_sample/trips.{trips}
 import subway_gleam/schedule_sample/services.{services}
@@ -78,10 +79,9 @@ pub fn main() -> Nil {
       contents: code_prefix <> "pub fn services() {" <> services_str <> "}",
     )
 
-  let full_code = code_prefix <> schedule_code
   io.println_error("Writing to src/subway_gleam/schedule_sample.gleam...")
   let assert Ok(Nil) =
-    simplifile.write(to: path <> ".gleam", contents: full_code)
+    simplifile.write(to: path <> ".gleam", contents: schedule_code)
 
   io.println_error("Formatting code...")
   let assert Ok(_) =
