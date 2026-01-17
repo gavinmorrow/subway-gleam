@@ -40,6 +40,7 @@ pub type Schedule {
     ),
     trips: Trips,
     services: dict.Dict(Route, Service),
+    transfers: dict.Dict(StopId, set.Set(Transfer)),
   )
 }
 
@@ -115,8 +116,16 @@ pub fn parse(bits: BitArray) -> Result(Schedule, FetchError) {
     })
     |> result.replace_error(InvalidStopTimes),
   )
+  use transfers <- result.try(parse_file("transfers.txt", transfer_decoder()))
+  let transfers =
+    list.fold(over: transfers, from: dict.new(), with: fn(acc, transfer) {
+      dict.upsert(transfer.origin, in: acc, with: fn(acc_transfers) {
+        let acc_transfers = acc_transfers |> option.unwrap(or: set.new())
+        set.insert(transfer, into: acc_transfers)
+      })
+    })
 
-  Schedule(stops:, trips:, services:) |> Ok
+  Schedule(stops:, trips:, services:, transfers:) |> Ok
 }
 
 fn empty_service(route: Route) -> Service {
@@ -605,6 +614,30 @@ pub fn parse_shape_id(from trip_id: String) -> Result(ShapeId, Nil) {
   |> string.split(on: "_")
   |> list.last
   |> result.map(ShapeId)
+}
+
+pub type Transfer {
+  Transfer(
+    origin: StopId,
+    destination: StopId,
+    transfer_time: duration.Duration,
+  )
+}
+
+fn transfer_decoder() -> decode.Decoder(Transfer) {
+  use #(origin, _) <- decode.field("from_stop_id", stop_id_decoder())
+  use #(destination, _) <- decode.field("to_stop_id", stop_id_decoder())
+  use transfer_time <- decode.field(
+    "min_transfer_time",
+    util.decode_parse_str_field(
+      named: "min_transfer_time",
+      with: int.parse,
+      default: 0,
+    ),
+  )
+  let transfer_time = duration.seconds(transfer_time)
+
+  Transfer(origin:, destination:, transfer_time:) |> decode.success
 }
 
 /// Parses a static GTFS `Time`.

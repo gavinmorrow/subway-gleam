@@ -37,16 +37,32 @@ fn set(dict: dict.Dict(a, b)) -> set.Set(a) {
   dict |> dict.keys |> set.from_list
 }
 "
+const transfers_prefix = "import subway_gleam/st.{StopId, Transfer}
+
+import gleam/dict
+import gleam/set
+import gleam/time/duration.{type Duration}
+
+fn set(dict: dict.Dict(a, b)) -> set.Set(a) {
+  dict |> dict.keys |> set.from_list
+}
+
+fn duration(secs: Int, nanos: Int) -> Duration {
+  assert nanos == 0
+  duration.seconds(secs)
+}
+"
 
 const schedule_code = "//// A sample schedule to use that doesn't take forever to parse.
 import subway_gleam/st.{Schedule}
 import subway_gleam/schedule_sample/stops.{stops}
 import subway_gleam/schedule_sample/trips.{trips}
 import subway_gleam/schedule_sample/services.{services}
+import subway_gleam/schedule_sample/transfers.{transfers}
 
 /// A sample schedule to use that doesn't take forever to parse.
 pub fn schedule() {
-  Ok(Schedule(stops: stops(), trips: trips(), services: services()))
+  Ok(Schedule(stops: stops(), trips: trips(), services: services(), transfers: transfers()))
 }
 "
 
@@ -87,6 +103,20 @@ pub fn main() -> Nil {
     simplifile.write(
       to: path <> "/services.gleam",
       contents: services_prefix <> "pub fn services() {" <> services_str <> "}",
+    )
+  let transfers_str =
+    string.inspect(schedule.transfers)
+    // The ShapeId constructor is opaque, so there's a helper func
+    |> string.replace(each: "ShapeId(", with: "shape_id(")
+    |> string.replace(each: "Set(", with: "set(")
+    |> string.replace(each: "Duration(", with: "duration(")
+  let assert Ok(Nil) =
+    simplifile.write(
+      to: path <> "/transfers.gleam",
+      contents: transfers_prefix
+        <> "pub fn transfers() {"
+        <> transfers_str
+        <> "}",
     )
 
   io.println_error("Writing to src/subway_gleam/schedule_sample.gleam...")
