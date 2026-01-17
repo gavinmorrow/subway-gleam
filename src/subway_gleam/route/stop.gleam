@@ -5,6 +5,7 @@ import gleam/option
 import gleam/order
 import gleam/pair
 import gleam/result
+import gleam/set
 import gleam/time/duration
 import gleam/time/timestamp
 import gleam/uri
@@ -47,6 +48,24 @@ pub fn stop(
     |> result.replace_error(error_unknown_stop(stop_id)),
   )
 
+  let transfers =
+    state.schedule.transfers
+    |> dict.get(stop.id)
+    |> result.unwrap(or: set.new())
+    |> set.map(fn(transfer) {
+      let routes =
+        state.schedule.stop_routes
+        |> dict.get(transfer.destination)
+        |> result.unwrap(set.new())
+        |> set.map(st.route_to_long_id)
+        |> set.map(component.route_bullet)
+
+      let st.StopId(id) = transfer.destination
+      html.a([attribute.href("/stop/" <> id)], set.to_list(routes))
+    })
+    |> set.to_list
+    |> list.intersperse(html.text(", "))
+
   let gtfs_actor.Data(current: gtfs, last_updated:) = state.fetch_gtfs(state)
 
   let #(uptown, downtown) =
@@ -85,6 +104,7 @@ pub fn stop(
         <> { last_updated |> timestamp.to_rfc3339(duration.hours(-4)) },
       ),
     ]),
+    html.p([], [html.text("Transfer to:"), ..transfers]),
     html.h2([], [html.text("Uptown")]),
     html.ul([attribute.class("arrival-list")], uptown),
     html.h2([], [html.text("Downtown")]),
