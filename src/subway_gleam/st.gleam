@@ -40,6 +40,7 @@ pub type Schedule {
     ),
     trips: Trips,
     services: dict.Dict(Route, Service),
+    stop_routes: dict.Dict(StopId, set.Set(Route)),
     transfers: dict.Dict(StopId, set.Set(Transfer)),
   )
 }
@@ -105,15 +106,8 @@ pub fn parse(bits: BitArray) -> Result(Schedule, FetchError) {
     })
 
   use stop_times <- result.try(parse_file("stop_times.txt", stop_time_decoder()))
-  use services <- result.try(
-    list.try_fold(over: stop_times, from: dict.new(), with: fn(acc, stop) {
-      use route <- result.map(dict.get(trips.routes, stop.trip_id))
-
-      use service <- dict.upsert(in: acc, update: route)
-      let service = option.unwrap(service, or: empty_service(route))
-
-      Service(..service, stops: set.insert(stop.stop_id, into: service.stops))
-    })
+  use #(services, stop_routes) <- result.try(
+    parse_stop_times(trips, stop_times, dict.new(), dict.new())
     |> result.replace_error(InvalidStopTimes),
   )
   use transfers <- result.try(parse_file("transfers.txt", transfer_decoder()))
@@ -125,7 +119,40 @@ pub fn parse(bits: BitArray) -> Result(Schedule, FetchError) {
       })
     })
 
-  Schedule(stops:, trips:, services:, transfers:) |> Ok
+  Schedule(stops:, trips:, services:, stop_routes:, transfers:) |> Ok
+}
+
+fn parse_stop_times(
+  trips: Trips,
+  stop_times: List(StopTime),
+  acc_services: dict.Dict(Route, Service),
+  acc_stop_routes: dict.Dict(StopId, set.Set(Route)),
+) -> Result(
+  #(dict.Dict(Route, Service), dict.Dict(StopId, set.Set(Route))),
+  Nil,
+) {
+  case stop_times {
+    [] -> Ok(#(acc_services, acc_stop_routes))
+    [stop, ..stop_times] -> {
+      use route <- result.try(dict.get(trips.routes, stop.trip_id))
+
+      let acc_services =
+        dict.upsert(route, in: acc_services, with: fn(service) {
+          let service = option.unwrap(service, or: empty_service(route))
+          Service(
+            ..service,
+            stops: set.insert(stop.stop_id, into: service.stops),
+          )
+        })
+      let acc_stop_routes =
+        dict.upsert(stop.stop_id, in: acc_stop_routes, with: fn(routes) {
+          let routes = option.unwrap(routes, or: set.new())
+          set.insert(route, into: routes)
+        })
+
+      parse_stop_times(trips, stop_times, acc_services, acc_stop_routes)
+    }
+  }
 }
 
 fn empty_service(route: Route) -> Service {

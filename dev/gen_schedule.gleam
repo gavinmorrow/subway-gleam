@@ -37,6 +37,20 @@ fn set(dict: dict.Dict(a, b)) -> set.Set(a) {
   dict |> dict.keys |> set.from_list
 }
 "
+
+const stop_routes_prefix = "import subway_gleam/st.{
+  A, B, C, D, E, F, G, J, L, M, N, N1, N2, N3, N4, N5, N6, N7, Q, R, S,
+  Sf, Si, Sr, StopId, W, Z,
+}
+
+import gleam/dict
+import gleam/set
+
+fn set(dict: dict.Dict(a, b)) -> set.Set(a) {
+  dict |> dict.keys |> set.from_list
+}
+"
+
 const transfers_prefix = "import subway_gleam/st.{StopId, Transfer}
 
 import gleam/dict
@@ -58,11 +72,18 @@ import subway_gleam/st.{Schedule}
 import subway_gleam/schedule_sample/stops.{stops}
 import subway_gleam/schedule_sample/trips.{trips}
 import subway_gleam/schedule_sample/services.{services}
+import subway_gleam/schedule_sample/stop_routes.{stop_routes}
 import subway_gleam/schedule_sample/transfers.{transfers}
 
 /// A sample schedule to use that doesn't take forever to parse.
 pub fn schedule() {
-  Ok(Schedule(stops: stops(), trips: trips(), services: services(), transfers: transfers()))
+  Ok(Schedule(
+    stops: stops(),
+    trips: trips(),
+    services: services(),
+    stop_routes: stop_routes(),
+    transfers: transfers(),
+  ))
 }
 "
 
@@ -103,6 +124,19 @@ pub fn main() -> Nil {
     simplifile.write(
       to: path <> "/services.gleam",
       contents: services_prefix <> "pub fn services() {" <> services_str <> "}",
+    )
+  let stop_routes_str =
+    string.inspect(schedule.stop_routes)
+    // The ShapeId constructor is opaque, so there's a helper func
+    |> string.replace(each: "ShapeId(", with: "shape_id(")
+    |> string.replace(each: "Set(", with: "set(")
+  let assert Ok(Nil) =
+    simplifile.write(
+      to: path <> "/stop_routes.gleam",
+      contents: stop_routes_prefix
+        <> "pub fn stop_routes() {"
+        <> stop_routes_str
+        <> "}",
     )
   let transfers_str =
     string.inspect(schedule.transfers)
