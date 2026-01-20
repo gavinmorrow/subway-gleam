@@ -70,7 +70,6 @@ pub fn stop(
       )
     })
     |> set.to_list
-    |> list.intersperse(html.text(", "))
 
   let gtfs_actor.Data(current: gtfs, last_updated:) = state.fetch_gtfs(state)
 

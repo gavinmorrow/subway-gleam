@@ -1,11 +1,13 @@
+import gleam/string
 import lustre/attribute
 import lustre/element
 import lustre/element/html
 import subway_gleam/st
 
 pub fn route_bullet(route: st.RouteData) -> element.Element(msg) {
-  // TODO: fix diamond expresses so they don't have X in the name
   let route_text = st.route_to_long_id(route.id)
+  // TODO: make this less hacky. maybe pass around separate "diamond express" property?
+  let assert Ok(route_text) = string.first(route_text)
 
   let shape = case st.bullet_shape(for: route.id) {
     st.Circle -> "circle"
