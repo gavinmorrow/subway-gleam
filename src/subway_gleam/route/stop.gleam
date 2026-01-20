@@ -57,7 +57,10 @@ pub fn stop(
         state.schedule.stop_routes
         |> dict.get(transfer.destination)
         |> result.unwrap(set.new())
-        |> set.map(st.route_to_long_id)
+        |> set.map(fn(route_id) {
+          let assert Ok(route) = state.schedule.routes |> dict.get(route_id)
+          route
+        })
         |> set.map(component.route_bullet)
 
       let st.StopId(id) = transfer.destination
@@ -90,8 +93,8 @@ pub fn stop(
         st.South -> #(uptown_acc, [li, ..downtown_acc])
       }
     })
-  let uptown = uptown |> list.take(from: _, up_to: 10)
-  let downtown = downtown |> list.take(from: _, up_to: 10)
+  // let uptown = uptown |> list.take(from: _, up_to: 10)
+  // let downtown = downtown |> list.take(from: _, up_to: 10)
 
   let head = [html.title([], "Trains at " <> stop.name)]
   let body = [
@@ -190,6 +193,10 @@ fn arrival_li(
     _, _ -> False
   }
 
+  // TODO: what to do here?? try to get rid of assert.
+  let assert Ok(route_id) = st.route_id_long_to_route(trip.route_id)
+  let route = schedule |> st.route_data(for: route_id)
+
   html.li([], [
     html.a(
       [
@@ -197,7 +204,7 @@ fn arrival_li(
         attribute.classes([#("highlight", is_highlighted)]),
       ],
       [
-        component.route_bullet(trip.route_id),
+        component.route_bullet(route),
         headsign |> result.unwrap(or: element.none()),
         html.span([], [
           html.text(

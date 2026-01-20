@@ -67,6 +67,14 @@ fn duration(secs: Int, nanos: Int) -> Duration {
 }
 "
 
+const routes_prefix = "import subway_gleam/st.{
+  A, B, C, D, E, F, FX, G, J, L, M, N, N1, N2, N3, N4, N5, N6, N6X, N7, N7X, Q,
+  R, RouteData, S, Sf, Si, Sr, W, Z,
+}
+
+import gleam/dict
+"
+
 const schedule_code = "//// A sample schedule to use that doesn't take forever to parse.
 import subway_gleam/st.{Schedule}
 import subway_gleam/schedule_sample/stops.{stops}
@@ -74,6 +82,7 @@ import subway_gleam/schedule_sample/trips.{trips}
 import subway_gleam/schedule_sample/services.{services}
 import subway_gleam/schedule_sample/stop_routes.{stop_routes}
 import subway_gleam/schedule_sample/transfers.{transfers}
+import subway_gleam/schedule_sample/routes.{routes}
 
 /// A sample schedule to use that doesn't take forever to parse.
 pub fn schedule() {
@@ -83,6 +92,7 @@ pub fn schedule() {
     services: services(),
     stop_routes: stop_routes(),
     transfers: transfers(),
+    routes: routes(),
   ))
 }
 "
@@ -151,6 +161,12 @@ pub fn main() -> Nil {
         <> "pub fn transfers() {"
         <> transfers_str
         <> "}",
+    )
+  let routes_str = string.inspect(schedule.routes)
+  let assert Ok(Nil) =
+    simplifile.write(
+      to: path <> "/routes.gleam",
+      contents: routes_prefix <> "pub fn routes() {" <> routes_str <> "}",
     )
 
   io.println_error("Writing to src/subway_gleam/schedule_sample.gleam...")

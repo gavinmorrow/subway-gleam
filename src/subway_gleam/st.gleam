@@ -44,6 +44,7 @@ pub type Schedule {
     services: dict.Dict(Route, Service),
     stop_routes: dict.Dict(StopId, set.Set(Route)),
     transfers: dict.Dict(StopId, set.Set(Transfer)),
+    routes: dict.Dict(Route, RouteData),
   )
 }
 
@@ -120,8 +121,13 @@ pub fn parse(bits: BitArray) -> Result(Schedule, FetchError) {
         set.insert(transfer, into: acc_transfers)
       })
     })
+  use routes <- result.try(parse_file("routes.txt", route_data_decoder()))
+  let routes =
+    list.fold(over: routes, from: dict.new(), with: fn(routes, route) {
+      dict.insert(route, into: routes, for: route.id)
+    })
 
-  Schedule(stops:, trips:, services:, stop_routes:, transfers:) |> Ok
+  Schedule(stops:, trips:, services:, stop_routes:, transfers:, routes:) |> Ok
 }
 
 fn parse_stop_times(
@@ -638,7 +644,7 @@ type Trip {
 fn trip_decoder() -> decode.Decoder(Trip) {
   use id <- decode.field("trip_id", decode.string)
   let id = TripId(id)
-  use route_id <- decode.field("route_id", route_id_in_trip_decoder())
+  use route_id <- decode.field("route_id", route_decoder())
   use headsign <- decode.field("trip_headsign", decode.string)
   use shape_id <- decode.optional_field(
     "shape_id",
@@ -648,7 +654,7 @@ fn trip_decoder() -> decode.Decoder(Trip) {
   decode.success(Trip(id:, route_id:, headsign:, shape_id:))
 }
 
-fn route_id_in_trip_decoder() -> decode.Decoder(Route) {
+fn route_decoder() -> decode.Decoder(Route) {
   use route <- decode.then(decode.string)
   case route {
     "A" -> A |> decode.success
@@ -722,6 +728,55 @@ fn transfer_decoder() -> decode.Decoder(Transfer) {
   let transfer_time = duration.seconds(transfer_time)
 
   Transfer(origin:, destination:, transfer_time:) |> decode.success
+}
+
+pub type RouteData {
+  RouteData(
+    id: Route,
+    short_name: String,
+    long_name: String,
+    desc: String,
+    url: String,
+    color: String,
+    text_color: String,
+    sort_order: Int,
+  )
+}
+
+fn route_data_decoder() -> decode.Decoder(RouteData) {
+  use id <- decode.field("route_id", route_decoder())
+  use short_name <- decode.field("route_short_name", decode.string)
+  use long_name <- decode.field("route_long_name", decode.string)
+  use desc <- decode.field("route_desc", decode.string)
+  use url <- decode.field("route_url", decode.string)
+  use color <- decode.field("route_color", decode.string)
+  use text_color <- decode.field("route_text_color", decode.string)
+  use sort_order <- decode.field(
+    "route_sort_order",
+    util.decode_parse_str_field(
+      named: "route_sort_order",
+      with: int.parse,
+      default: 0,
+    ),
+  )
+
+  RouteData(
+    id:,
+    short_name:,
+    long_name:,
+    desc:,
+    url:,
+    color:,
+    text_color:,
+    sort_order:,
+  )
+  |> decode.success
+}
+
+pub fn route_data(in schedule: Schedule, for route: Route) -> RouteData {
+  // TODO: data structure that doesn't require assert here?
+  let assert Ok(data) = schedule.routes |> dict.get(route)
+  data
 }
 
 /// Parses a static GTFS `Time`.
