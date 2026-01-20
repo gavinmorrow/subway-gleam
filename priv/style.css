@@ -1,7 +1,8 @@
 :root {
   --color-bg-0: oklch(0.1 0.05 265.55);
   --color-bg-1: oklch(from var(--color-bg-0) 0.2 c h);
-  --color-bg-highlight: oklch(from var(--color-bg-1) 0.4 c h);
+  --color-bg-btn-highlight: oklch(from var(--color-bg-1) 0.3 c h);
+  --color-bg-row-highlight: oklch(from var(--color-bg-1) 0.4 c h);
   --color-text: #eee;
 
   --bullet-size: 1.5em;
@@ -28,7 +29,7 @@ body {
 
     background-color: var(--color-bg-1);
     &.highlight {
-      background-color: var(--color-bg-highlight);
+      background-color: var(--color-bg-row-highlight);
     }
 
     box-sizing: border-box;
@@ -92,4 +93,32 @@ body {
   vertical-align: baseline;
 
   font-family: "Helvetica", sans-serif;
+
+.bullet-group {
+  display: inline flex;
+  align-items: center;
+  gap: 0.1em;
+
+  background-color: var(--color-bg-1);
+  text-decoration: none;
+
+  box-sizing: border-box;
+  --height: calc(var(--padding) + var(--bullet-size));
+  height: var(--height);
+
+  --padding: 0.5em;
+  padding: 0 calc(var(--padding) / 2);
+  border-radius: var(--height);
+
+  .route-bullet {
+    margin: 0;
+    margin-top: var(--padding);
+  }
+
+  &:is(a) {
+    &:hover,
+    &:focus-visible {
+      background-color: var(--color-bg-btn-highlight);
+    }
+  }
 }

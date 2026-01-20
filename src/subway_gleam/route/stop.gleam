@@ -64,7 +64,10 @@ pub fn stop(
         |> set.map(component.route_bullet)
 
       let st.StopId(id) = transfer.destination
-      html.a([attribute.href("/stop/" <> id)], set.to_list(routes))
+      html.a(
+        [attribute.class("bullet-group"), attribute.href("/stop/" <> id)],
+        set.to_list(routes),
+      )
     })
     |> set.to_list
     |> list.intersperse(html.text(", "))
