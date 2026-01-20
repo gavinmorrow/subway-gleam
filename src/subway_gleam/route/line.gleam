@@ -13,7 +13,7 @@ import subway_gleam/state
 import wisp
 
 pub fn line(req: wisp.Request, state: state.State, route_id: String) {
-  use req <- try_lustre_res(req)
+  use _req <- try_lustre_res(req)
 
   use route <- result.try(
     st.route_id_long_to_route(route_id)
