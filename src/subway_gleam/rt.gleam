@@ -105,12 +105,21 @@ fn gtfs_rt_feed_path(feed: GtfsRtFeed) -> String {
 pub fn gtfs_rt_feed_from_route(route: st.Route) -> GtfsRtFeed {
   case route {
     st.A | st.C | st.E | st.Sr -> ACESr
-    st.B | st.D | st.F | st.M | st.Sf -> BDFMSf
+    st.B | st.D | st.F | st.FX | st.M | st.Sf -> BDFMSf
     st.G -> G
     st.J | st.Z -> JZ
     st.N | st.Q | st.R | st.W -> NQRW
     st.L -> L
-    st.N1 | st.N2 | st.N3 | st.N4 | st.N5 | st.N6 | st.N7 | st.S -> S1234567
+    st.N1
+    | st.N2
+    | st.N3
+    | st.N4
+    | st.N5
+    | st.N6
+    | st.N6X
+    | st.N7
+    | st.N7X
+    | st.S -> S1234567
     st.Si -> Si
   }
 }

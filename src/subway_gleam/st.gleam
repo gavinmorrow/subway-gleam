@@ -373,8 +373,10 @@ pub type Route {
   N4
   N5
   N6
+  N6X
 
   N7
+  N7X
 
   A
   C
@@ -383,6 +385,7 @@ pub type Route {
   B
   D
   F
+  FX
   M
 
   N
@@ -449,6 +452,7 @@ pub fn route_to_long_id(route: Route) -> String {
     D -> "D"
     E -> "E"
     F -> "F"
+    FX -> "FX"
     G -> "G"
     J -> "J"
     L -> "L"
@@ -460,7 +464,9 @@ pub fn route_to_long_id(route: Route) -> String {
     N4 -> "4"
     N5 -> "5"
     N6 -> "6"
+    N6X -> "6X"
     N7 -> "7"
+    N7X -> "7X"
     Q -> "Q"
     R -> "R"
     S -> "S"
@@ -482,6 +488,7 @@ pub fn route_id_long_to_route(route: String) -> Result(Route, Nil) {
     "D" -> D |> Ok
     "E" -> E |> Ok
     "F" -> F |> Ok
+    "FX" -> FX |> Ok
     "G" -> G |> Ok
     "J" -> J |> Ok
     "L" -> L |> Ok
@@ -493,7 +500,9 @@ pub fn route_id_long_to_route(route: String) -> Result(Route, Nil) {
     "4" -> N4 |> Ok
     "5" -> N5 |> Ok
     "6" -> N6 |> Ok
+    "6X" -> N6X |> Ok
     "7" -> N7 |> Ok
+    "7X" -> N7X |> Ok
     "Q" -> Q |> Ok
     "R" -> R |> Ok
     "S" -> S |> Ok
@@ -602,7 +611,8 @@ fn route_id_in_trip_decoder() -> decode.Decoder(Route) {
     "C" -> C |> decode.success
     "D" -> D |> decode.success
     "E" -> E |> decode.success
-    "F" | "FX" -> F |> decode.success
+    "F" -> F |> decode.success
+    "FX" -> FX |> decode.success
     "G" -> G |> decode.success
     "J" -> J |> decode.success
     "L" -> L |> decode.success
@@ -613,8 +623,10 @@ fn route_id_in_trip_decoder() -> decode.Decoder(Route) {
     "3" -> N3 |> decode.success
     "4" -> N4 |> decode.success
     "5" -> N5 |> decode.success
-    "6" | "6X" -> N6 |> decode.success
-    "7" | "7X" -> N7 |> decode.success
+    "6" -> N6 |> decode.success
+    "6X" -> N6X |> decode.success
+    "7" -> N7 |> decode.success
+    "7X" -> N7X |> decode.success
     "Q" -> Q |> decode.success
     "R" -> R |> decode.success
     "GS" -> S |> decode.success

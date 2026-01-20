@@ -13,8 +13,8 @@ import gleam/option.{None, Some}
 "
 
 const trips_prefix = "import subway_gleam/st.{
-  type ShapeId, A, B, C, D, E, F, G, J, L, M, N, N1, N2, N3, N4, N5, N6, N7, Q,
-  R, S, Sf, Si, Sr, TripId, Trips, W, Z, parse_shape_id,
+  type ShapeId, A, B, C, D, E, F, FX, G, J, L, M, N, N1, N2, N3, N4, N5, N6, N6X,
+  N7, N7X, Q, R, S, Sf, Si, Sr, TripId, Trips, W, Z, parse_shape_id,
 }
 
 import gleam/dict
@@ -26,8 +26,8 @@ fn shape_id(shape_id: String) -> ShapeId {
 "
 
 const services_prefix = "import subway_gleam/st.{
-  A, B, C, D, E, F, G, J, L, M, N, N1, N2, N3, N4, N5, N6, N7, Q, R, S, Service,
-  Sf, Si, Sr, StopId, W, Z,
+  A, B, C, D, E, F, FX, G, J, L, M, N, N1, N2, N3, N4, N5, N6, N6X, N7, N7X, Q,
+  R, S, Service, Sf, Si, Sr, StopId, W, Z,
 }
 
 import gleam/dict
@@ -39,8 +39,8 @@ fn set(dict: dict.Dict(a, b)) -> set.Set(a) {
 "
 
 const stop_routes_prefix = "import subway_gleam/st.{
-  A, B, C, D, E, F, G, J, L, M, N, N1, N2, N3, N4, N5, N6, N7, Q, R, S,
-  Sf, Si, Sr, StopId, W, Z,
+  A, B, C, D, E, F, FX, G, J, L, M, N, N1, N2, N3, N4, N5, N6, N6X, N7, N7X, Q,
+  R, S, Sf, Si, Sr, StopId, W, Z,
 }
 
 import gleam/dict
