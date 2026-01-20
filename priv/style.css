@@ -48,3 +48,33 @@ body {
     }
   }
 }
+
+.route-bullet {
+  --size: 1.5em;
+
+  color: var(--color-bullet-text);
+  position: relative;
+  &::before {
+    position: absolute;
+    background-color: var(--color-bullet-bg);
+    content: "";
+    width: var(--size);
+    height: var(--size);
+    top: calc(-1 * var(--size) / 6);
+    left: 0;
+    z-index: -1;
+    border-radius: 100%;
+  }
+  z-index: 0;
+
+  display: inline-block;
+  padding: 0.1em;
+  width: var(--size);
+  height: var(--size);
+  box-sizing: border-box;
+
+  text-align: center;
+  vertical-align: baseline;
+
+  font-family: "Helvetica", sans-serif;
+}
