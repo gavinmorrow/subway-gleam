@@ -1,3 +1,4 @@
+import comp_flags
 import gleam/dynamic/decode
 import gleam/float
 import gleam/result
@@ -18,7 +19,7 @@ pub fn decode_parse_str_field(
 /// This exists so that for debugging, the time can be when the feed was fetched.
 pub fn current_time() -> timestamp.Timestamp {
   // timestamp.system_time()
-  timestamp.from_unix_seconds(1_768_327_560)
+  comp_flags.rt_time()
 }
 
 pub fn min_from_now(time: timestamp.Timestamp) -> Int {
