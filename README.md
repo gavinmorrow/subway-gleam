@@ -1,24 +1,17 @@
 # subway_gleam
 
-[![Package Version](https://img.shields.io/hexpm/v/subway_gleam)](https://hex.pm/packages/subway_gleam)
-[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/subway_gleam/)
+This is a little web app to view subway arrival times for the NYC Subway :]
 
-```sh
-gleam add subway_gleam@1
-```
-```gleam
-import subway_gleam
-
-pub fn main() -> Nil {
-  // TODO: An example of the project in use
-}
-```
-
-Further documentation can be found at <https://hexdocs.pm/subway_gleam>.
+It uses lustre server-side, and sends over fully rendered static HTML.
 
 ## Development
 
-```sh
-gleam run   # Run the project
-gleam test  # Run the tests
-```
+To run the project, use `gleam run` and then go to `localhost:8000` in your web
+browser of choice.
+
+If this is your first time running it, make sure that the flags for `st` in
+`src/comp_flags.gleam` are set to fetch from the internet and save the values
+to disk. After doing `gleam run` once followed by `gleam run -m gen_schedule`,
+they will be saved, so development can continue locally without re-fetching and
+parsing each time. The folder `./src/subway_gleam/schedule_sample/` may need to
+be created.
