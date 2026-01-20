@@ -415,6 +415,43 @@ pub type Route {
   Si
 }
 
+pub type BulletShape {
+  Circle
+  Diamond
+}
+
+pub fn bullet_shape(for route: Route) -> BulletShape {
+  case route {
+    N6X | N7X | FX -> Diamond
+    N1
+    | N2
+    | N3
+    | N4
+    | N5
+    | N6
+    | N7
+    | A
+    | C
+    | E
+    | B
+    | D
+    | F
+    | M
+    | N
+    | Q
+    | R
+    | W
+    | J
+    | Z
+    | G
+    | L
+    | S
+    | Sr
+    | Sf
+    | Si -> Circle
+  }
+}
+
 pub fn parse_stop_id(
   from str: String,
 ) -> Result(#(StopId, option.Option(Direction)), Nil) {
