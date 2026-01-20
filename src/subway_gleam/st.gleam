@@ -1,5 +1,6 @@
 //// Work with the static GTFS data.
 
+import comp_flags
 import gleam/bit_array
 import gleam/bool
 import gleam/dict
@@ -16,6 +17,7 @@ import gleam/set
 import gleam/string
 import gleam/time/duration
 import gsv
+import simplifile
 
 import subway_gleam/internal/ffi
 import subway_gleam/internal/util
@@ -167,6 +169,12 @@ pub fn fetch_bin(feed: Feed) -> Result(BitArray, httpc.HttpError) {
     |> request.set_body(<<>>)
 
   use res <- result.try(httpc.send_bits(req))
+
+  let assert Ok(Nil) = case comp_flags.save_fetched_st {
+    True -> simplifile.write_bits(res.body, to: "gtfs_subway.zip")
+    False -> Ok(Nil)
+  }
+
   res.body |> Ok
 }
 

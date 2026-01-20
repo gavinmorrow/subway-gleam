@@ -88,8 +88,8 @@ pub type FetchGtfsError {
   ParseError(protobin.ParseError)
 }
 
-fn gtfs_rt_feed_path(feed: GtfsRtFeed) -> String {
-  let name = case feed {
+fn gtfs_rt_feed_filename(feed: GtfsRtFeed) -> String {
+  case feed {
     ACESr -> "gtfs-ace"
     BDFMSf -> "gtfs-bdfm"
     G -> "gtfs-g"
@@ -99,7 +99,10 @@ fn gtfs_rt_feed_path(feed: GtfsRtFeed) -> String {
     S1234567 -> "gtfs"
     Si -> "gtfs-si"
   }
-  "Dataservice/mtagtfsfeeds/nyct%2F" <> name
+}
+
+fn gtfs_rt_feed_path(feed: GtfsRtFeed) -> String {
+  "Dataservice/mtagtfsfeeds/nyct%2F" <> gtfs_rt_feed_filename(feed)
 }
 
 pub fn gtfs_rt_feed_from_route(route: st.Route) -> GtfsRtFeed {
@@ -127,16 +130,7 @@ pub fn gtfs_rt_feed_from_route(route: st.Route) -> GtfsRtFeed {
 fn fetch_gtfs_rt_bin(feed: GtfsRtFeed) -> Result(BitArray, httpc.HttpError) {
   case comp_flags.use_local_rt {
     True -> {
-      let name = case feed {
-        ACESr -> "gtfs-ace"
-        BDFMSf -> "gtfs-bdfm"
-        G -> "gtfs-g"
-        JZ -> "gtfs-jz"
-        L -> "gtfs-l"
-        NQRW -> "gtfs-nqrw"
-        S1234567 -> "gtfs"
-        Si -> "gtfs-si"
-      }
+      let name = gtfs_rt_feed_filename(feed)
       let path = "./gtfs_rt_samples/" <> name
       let assert Ok(bits) = simplifile.read_bits(from: path)
       Ok(bits)
@@ -158,6 +152,15 @@ pub fn fetch_gtfs(
   feed feed: GtfsRtFeed,
 ) -> Result(gtfs_rt_nyct.FeedMessage, FetchGtfsError) {
   use bits <- result.try(fetch_gtfs_rt_bin(feed) |> result.map_error(HttpError))
+
+  let assert Ok(Nil) = case comp_flags.save_fetched_rt {
+    True -> {
+      let filename = gtfs_rt_feed_filename(feed)
+      simplifile.write_bits(bits, to: "./gtfs_rt_samples/" <> filename)
+    }
+    False -> Ok(Nil)
+  }
+
   protobin.parse_with_config(
     from: bits,
     using: gtfs_rt_nyct.feed_message_decoder(),
