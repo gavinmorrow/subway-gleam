@@ -4,6 +4,7 @@ import gleam/option
 import gleam/result
 import gleam/set
 import gleam/string
+import lustre/attribute
 import lustre/element
 import lustre/element/html
 import subway_gleam/lustre_middleware.{Document, try_lustre_res}
@@ -45,14 +46,17 @@ pub fn line(req: wisp.Request, state: state.State, route_id: String) {
 fn stop_li(stop: st.Stop(direction)) -> element.Element(msg) {
   let st.Stop(
     name:,
-    id: _,
+    id:,
     direction: _,
     lat: _,
     lon: _,
     location_type: _,
     parent_station: _,
   ) = stop
-  html.li([], [html.text(name)])
+
+  let url = "/stop/" <> st.stop_id_to_string(id, direction: option.None)
+
+  html.li([], [html.a([attribute.href(url)], [html.text(name)])])
 }
 
 fn error_unknown_route(
