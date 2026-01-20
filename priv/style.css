@@ -3,6 +3,8 @@
   --color-bg-1: oklch(from var(--color-bg-0) 0.2 c h);
   --color-bg-highlight: oklch(from var(--color-bg-1) 0.4 c h);
   --color-text: #eee;
+
+  --bullet-size: 1.5em;
 }
 
 html,
@@ -29,11 +31,25 @@ body {
       background-color: var(--color-bg-highlight);
     }
 
+    box-sizing: border-box;
+    height: calc(var(--bullet-size) + var(--padding));
+
     --padding: 0.5em;
     --margin: calc(var(--padding) * 2 / 3);
+
     padding: var(--padding);
+    &:has(.route-bullet) {
+      /* The route bullet will take care of adding its own padding */
+      padding-left: 0;
+    }
+    .route-bullet {
+      margin-top: calc(var(--padding) / 2);
+      margin-left: calc(var(--padding) / 2);
+      flex-shrink: 0;
+    }
+
     margin: var(--margin) 0;
-    border-radius: var(--padding);
+    border-radius: var(--bullet-size);
 
     * {
       /* Actual alignment of text vertically!! */
@@ -50,17 +66,15 @@ body {
 }
 
 .route-bullet {
-  --size: 1.5em;
-
   color: var(--color-bullet-text);
   position: relative;
   &::before {
     position: absolute;
     background-color: var(--color-bullet-bg);
     content: "";
-    width: var(--size);
-    height: var(--size);
-    top: calc(-1 * var(--size) / 6);
+    width: var(--bullet-size);
+    height: var(--bullet-size);
+    top: calc(-1 * var(--bullet-size) / 6);
     left: 0;
     z-index: -1;
     border-radius: 100%;
@@ -69,8 +83,9 @@ body {
 
   display: inline-block;
   padding: 0.1em;
-  width: var(--size);
-  height: var(--size);
+  margin: 0.1em;
+  width: var(--bullet-size);
+  height: var(--bullet-size);
   box-sizing: border-box;
 
   text-align: center;
