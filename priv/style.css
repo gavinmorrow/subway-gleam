@@ -39,7 +39,7 @@ body {
     --margin: calc(var(--padding) * 2 / 3);
 
     padding: var(--padding);
-    &:has(.route-bullet) {
+    &:has(> .route-bullet:first-child) {
       /* The route bullet will take care of adding its own padding */
       padding-left: 0;
     }
