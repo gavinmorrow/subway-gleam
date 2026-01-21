@@ -196,7 +196,7 @@ fn arrival_li(
   }
 
   // TODO: what to do here?? try to get rid of assert.
-  let assert Ok(route_id) = st.route_id_long_to_route(trip.route_id)
+  let assert Ok(route_id) = st.parse_route(trip.route_id)
   let route = schedule |> st.route_data(for: route_id)
 
   html.li([], [

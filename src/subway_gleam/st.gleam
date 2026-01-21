@@ -12,6 +12,7 @@ import gleam/httpc
 import gleam/int
 import gleam/list
 import gleam/option
+import gleam/order
 import gleam/result
 import gleam/set
 import gleam/string
@@ -654,39 +655,47 @@ fn trip_decoder() -> decode.Decoder(Trip) {
   decode.success(Trip(id:, route_id:, headsign:, shape_id:))
 }
 
+/// For parsing from GTFS
+pub fn parse_route(route) {
+  case route {
+    "A" -> A |> Ok
+    "B" -> B |> Ok
+    "C" -> C |> Ok
+    "D" -> D |> Ok
+    "E" -> E |> Ok
+    "F" -> F |> Ok
+    "FX" -> FX |> Ok
+    "G" -> G |> Ok
+    "J" -> J |> Ok
+    "L" -> L |> Ok
+    "M" -> M |> Ok
+    "N" -> N |> Ok
+    "1" -> N1 |> Ok
+    "2" -> N2 |> Ok
+    "3" -> N3 |> Ok
+    "4" -> N4 |> Ok
+    "5" -> N5 |> Ok
+    "6" -> N6 |> Ok
+    "6X" -> N6X |> Ok
+    "7" -> N7 |> Ok
+    "7X" -> N7X |> Ok
+    "Q" -> Q |> Ok
+    "R" -> R |> Ok
+    "GS" -> S |> Ok
+    "FS" -> Sf |> Ok
+    "SI" -> Si |> Ok
+    "H" -> Sr |> Ok
+    "W" -> W |> Ok
+    "Z" -> Z |> Ok
+    route -> Error(route)
+  }
+}
+
 fn route_decoder() -> decode.Decoder(Route) {
   use route <- decode.then(decode.string)
-  case route {
-    "A" -> A |> decode.success
-    "B" -> B |> decode.success
-    "C" -> C |> decode.success
-    "D" -> D |> decode.success
-    "E" -> E |> decode.success
-    "F" -> F |> decode.success
-    "FX" -> FX |> decode.success
-    "G" -> G |> decode.success
-    "J" -> J |> decode.success
-    "L" -> L |> decode.success
-    "M" -> M |> decode.success
-    "N" -> N |> decode.success
-    "1" -> N1 |> decode.success
-    "2" -> N2 |> decode.success
-    "3" -> N3 |> decode.success
-    "4" -> N4 |> decode.success
-    "5" -> N5 |> decode.success
-    "6" -> N6 |> decode.success
-    "6X" -> N6X |> decode.success
-    "7" -> N7 |> decode.success
-    "7X" -> N7X |> decode.success
-    "Q" -> Q |> decode.success
-    "R" -> R |> decode.success
-    "GS" -> S |> decode.success
-    "FS" -> Sf |> decode.success
-    "SI" -> Si |> decode.success
-    "H" -> Sr |> decode.success
-    "W" -> W |> decode.success
-    "Z" -> Z |> decode.success
-    route -> decode.failure(A, "Route (in trip) (" <> route <> ")")
+  case parse_route(route) {
+    Ok(route) -> decode.success(route)
+    Error(route) -> decode.failure(A, "Route (in trip) (" <> route <> ")")
   }
 }
 
@@ -777,6 +786,10 @@ pub fn route_data(in schedule: Schedule, for route: Route) -> RouteData {
   // TODO: data structure that doesn't require assert here?
   let assert Ok(data) = schedule.routes |> dict.get(route)
   data
+}
+
+pub fn route_compare(a: RouteData, b: RouteData) -> order.Order {
+  int.compare(a.sort_order, b.sort_order)
 }
 
 /// Parses a static GTFS `Time`.
