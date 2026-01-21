@@ -18,11 +18,17 @@ pub type Data {
     arrivals: dict.Dict(st.StopId, List(TrainStopping)),
     final_stops: dict.Dict(st.ShapeId, #(st.StopId, st.Direction)),
     trips: dict.Dict(TrainId, List(TrainStopping)),
+    alerts: List(Alert),
   )
 }
 
 pub fn empty_data() -> Data {
-  Data(arrivals: dict.new(), final_stops: dict.new(), trips: dict.new())
+  Data(
+    arrivals: dict.new(),
+    final_stops: dict.new(),
+    trips: dict.new(),
+    alerts: list.new(),
+  )
 }
 
 pub fn data_merge(into a: Data, from b: Data) -> Data {
@@ -31,8 +37,9 @@ pub fn data_merge(into a: Data, from b: Data) -> Data {
   let final_stops = dict.merge(into: a.final_stops, from: b.final_stops)
   let trips =
     dict.combine(a.trips, b.trips, with: fn(a, b) { list.append(a, b) })
+  let alerts = list.append(a.alerts, b.alerts)
 
-  Data(arrivals:, final_stops:, trips:)
+  Data(arrivals:, final_stops:, trips:, alerts:)
 }
 
 pub fn data_map_arrivals(data: Data, fun) -> Data {
@@ -59,6 +66,10 @@ pub type TrainId {
 pub fn train_id_to_string(train_id: TrainId) -> String {
   let TrainId(train_id) = train_id
   train_id
+}
+
+pub type Alert {
+  Alert(targets: List(gtfs_rt_nyct.EntitySelector), content: String)
 }
 
 pub type GtfsRtFeed {
@@ -173,7 +184,10 @@ pub fn fetch_gtfs(
 pub fn analyze(raw: gtfs_rt_nyct.FeedMessage) -> Data {
   list.fold(over: raw.entity, from: empty_data(), with: fn(acc, entity) {
     case entity.data {
-      gtfs_rt_nyct.Alert(informed_entities: _, header_text: _) -> acc
+      gtfs_rt_nyct.Alert(informed_entities: targets, header_text: content) -> {
+        let alert = Alert(targets:, content:)
+        Data(..acc, alerts: [alert, ..acc.alerts])
+      }
       gtfs_rt_nyct.TripUpdate(trip:, stop_time_updates:) -> {
         let new_arrivals = parse_trip_update(trip, stop_time_updates)
         let final_stop = list.last(new_arrivals)

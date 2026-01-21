@@ -6,6 +6,7 @@ import gleam/order
 import gleam/pair
 import gleam/result
 import gleam/set
+import gleam/string
 import gleam/time/duration
 import gleam/time/timestamp
 import gleam/uri
@@ -48,6 +49,10 @@ pub fn stop(
     |> result.replace_error(error_unknown_stop(stop_id)),
   )
 
+  let routes =
+    state.schedule.stop_routes
+    |> dict.get(stop_id)
+    |> result.unwrap(or: set.new())
   let transfers =
     state.schedule.transfers
     |> dict.get(stop.id)
@@ -75,6 +80,33 @@ pub fn stop(
     |> set.to_list
 
   let gtfs_actor.Data(current: gtfs, last_updated:) = state.fetch_gtfs(state)
+
+  let alerts =
+    gtfs.alerts
+    |> list.filter(fn(alert) {
+      use target <- list.any(in: alert.targets)
+      let matches_route_id =
+        target.route_id
+        |> option.then(fn(route) { st.parse_route(route) |> option.from_result })
+        |> option.map(fn(route) { set.contains(route, in: routes) })
+        |> option.unwrap(or: False)
+      let matches_trip =
+        target.trip
+        |> option.map(fn(trip) {
+          case st.parse_route(trip.route_id) {
+            Ok(route) -> set.contains(route, in: routes)
+            Error(_) -> False
+          }
+        })
+        |> option.unwrap(or: False)
+      matches_route_id || matches_trip
+    })
+    |> list.map(fn(alert) {
+      html.div([], [
+        html.p([], [html.text(string.inspect(alert))]),
+        html.p([], [html.text(alert.content)]),
+      ])
+    })
 
   let #(uptown, downtown) =
     gtfs.arrivals
@@ -113,6 +145,7 @@ pub fn stop(
       ),
     ]),
     html.p([], [html.text("Transfer to:"), ..transfers]),
+    html.p([], [html.text("Alerts:"), ..alerts]),
     html.h2([], [html.text("Uptown")]),
     html.ul([attribute.class("arrival-list")], uptown),
     html.h2([], [html.text("Downtown")]),
