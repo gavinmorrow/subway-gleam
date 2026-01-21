@@ -61,12 +61,15 @@ pub fn stop(
           let assert Ok(route) = state.schedule.routes |> dict.get(route_id)
           route
         })
-        |> set.map(component.route_bullet)
+        |> set.to_list
+        |> list.sort(st.route_compare)
+        // TODO: also need to sort each group in sort order
+        |> list.map(component.route_bullet)
 
       let st.StopId(id) = transfer.destination
       html.a(
         [attribute.class("bullet-group"), attribute.href("/stop/" <> id)],
-        set.to_list(routes),
+        routes,
       )
     })
     |> set.to_list

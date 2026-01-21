@@ -4,12 +4,14 @@ import gleam/list
 import gleam/option
 import gleam/pair
 import gleam/result
+import gleam/set
 import gleam/time/duration
 import gleam/time/timestamp
 import gleam/uri
 import lustre/attribute
 import lustre/element
 import lustre/element/html
+import subway_gleam/component
 import subway_gleam/internal/util
 import subway_gleam/lustre_middleware.{Body, Document, try_lustre_res}
 import subway_gleam/rt
@@ -53,12 +55,20 @@ pub fn train(
 
   let stops =
     list.filter_map(stops, fn(arrival) {
-      let stop =
-        state.schedule.stops
-        |> dict.get(#(arrival.stop_id, option.Some(arrival.direction)))
+      // If the stop doesn't exist in the stops.txt, it's an internal timepoint
+      // and can be ignored.
+      // See <https://groups.google.com/g/mtadeveloperresources/c/fdlP92IKmF8>
+      use stop <- result.try(
+        dict.get(state.schedule.stops, #(
+          arrival.stop_id,
+          option.Some(arrival.direction),
+        )),
+      )
+
       let time = arrival.time
       case time |> util.min_from_now {
-        dt if dt >= 0 -> Ok(stop_li(stop, time, train_id, highlighted_stop))
+        dt if dt >= 0 ->
+          Ok(stop_li(stop, time, train_id, highlighted_stop, state.schedule))
         _ -> Error(Nil)
       }
     })
@@ -97,29 +107,36 @@ fn error_could_not_find_train(
 }
 
 fn stop_li(
-  stop: Result(st.Stop(a), Nil),
+  stop: st.Stop(a),
   time: timestamp.Timestamp,
   train_id: rt.TrainId,
   highlighted_stop: Result(st.StopId, Nil),
+  schedule: st.Schedule,
 ) -> element.Element(msg) {
-  let stop_name =
-    stop
-    |> result.map(fn(stop) { stop.name })
-    |> result.unwrap(or: "<Unknown stop>")
-  let stop_url =
-    result.map(stop, fn(stop) {
-      let stop_id = stop.id |> st.stop_id_to_string(direction: option.None)
-      let train_id = train_id |> rt.train_id_to_string |> uri.percent_encode
-      let query = uri.query_to_string([#("train_id", train_id)])
-      "/stop/" <> stop_id <> "?" <> query
-    })
-    |> result.unwrap(or: "")
-
-  let stop_id = stop |> result.map(fn(stop) { stop.id })
-  let is_highlighted = case stop_id, highlighted_stop {
-    Ok(stop_id), Ok(highlight) -> stop_id == highlight
-    _, _ -> False
+  let stop_url = {
+    let stop_id = stop.id |> st.stop_id_to_string(direction: option.None)
+    let train_id = train_id |> rt.train_id_to_string |> uri.percent_encode
+    let query = uri.query_to_string([#("train_id", train_id)])
+    "/stop/" <> stop_id <> "?" <> query
   }
+
+  let is_highlighted = case highlighted_stop {
+    Ok(highlight) -> stop.id == highlight
+    _ -> False
+  }
+
+  let transfers =
+    dict.get(schedule.transfers, stop.id)
+    |> result.map(set.to_list)
+    |> result.unwrap(or: [])
+    |> list.flat_map(fn(transfer) {
+      dict.get(schedule.stop_routes, transfer.destination)
+      |> result.map(set.to_list)
+      |> result.unwrap(or: [])
+    })
+    |> list.map(st.route_data(for: _, in: schedule))
+    |> list.sort(by: st.route_compare)
+    |> list.map(component.route_bullet)
 
   html.li([], [
     html.a(
@@ -128,7 +145,7 @@ fn stop_li(
         attribute.classes([#("highlight", is_highlighted)]),
       ],
       [
-        html.span([], [html.text(stop_name)]),
+        html.span([], [html.text(stop.name), ..transfers]),
         html.span([], [
           html.text(time |> util.min_from_now |> int.to_string <> "min"),
         ]),
