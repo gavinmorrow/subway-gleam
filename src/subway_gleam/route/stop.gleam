@@ -17,6 +17,7 @@ import subway_gleam/component
 import subway_gleam/internal/util
 import subway_gleam/lustre_middleware.{Document, try_lustre_res}
 import subway_gleam/rt
+import subway_gleam/rt/time_range.{TimeRange}
 import subway_gleam/st
 import subway_gleam/state
 import subway_gleam/state/gtfs_actor
@@ -81,8 +82,30 @@ pub fn stop(
 
   let gtfs_actor.Data(current: gtfs, last_updated:) = state.fetch_gtfs(state)
 
+  let current_time = util.current_time()
   let alerts =
     gtfs.alerts
+    |> list.filter(fn(alert) {
+      use period <- list.any(in: alert.active_periods)
+
+      let after_start = case period.start {
+        option.Some(start) -> {
+          // Turn the duration into a negative
+          let display_before_active =
+            alert.display_before_active
+            |> duration.difference(duration.seconds(0))
+          let start = start |> timestamp.add(display_before_active)
+          timestamp.compare(start, current_time) != order.Gt
+        }
+        option.None -> True
+      }
+      let before_end = case period.end {
+        option.Some(end) -> timestamp.compare(current_time, end) != order.Gt
+        option.None -> True
+      }
+
+      after_start && before_end
+    })
     |> list.filter(fn(alert) {
       use target <- list.any(in: alert.targets)
 
