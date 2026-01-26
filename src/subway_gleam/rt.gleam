@@ -6,8 +6,10 @@ import gleam/list
 import gleam/option
 import gleam/pair
 import gleam/result
+import gleam/string
 import gleam/time/duration
 import gleam/time/timestamp
+import gleam/uri
 import gtfs_rt_nyct
 import protobin
 import simplifile
@@ -125,6 +127,7 @@ pub type GtfsRtFeed {
   L
   S1234567
   Si
+  Alerts
 }
 
 pub const all_feeds = [
@@ -136,6 +139,7 @@ pub const all_feeds = [
   L,
   S1234567,
   Si,
+  Alerts,
 ]
 
 pub type FetchGtfsError {
@@ -145,41 +149,21 @@ pub type FetchGtfsError {
 
 fn gtfs_rt_feed_filename(feed: GtfsRtFeed) -> String {
   case feed {
-    ACESr -> "gtfs-ace"
-    BDFMSf -> "gtfs-bdfm"
-    G -> "gtfs-g"
-    JZ -> "gtfs-jz"
-    L -> "gtfs-l"
-    NQRW -> "gtfs-nqrw"
-    S1234567 -> "gtfs"
-    Si -> "gtfs-si"
+    ACESr -> "nyct_gtfs-ace"
+    BDFMSf -> "nyct_gtfs-bdfm"
+    G -> "nyct_gtfs-g"
+    JZ -> "nyct_gtfs-jz"
+    L -> "nyct_gtfs-l"
+    NQRW -> "nyct_gtfs-nqrw"
+    S1234567 -> "nyct_gtfs"
+    Si -> "nyct_gtfs-si"
+    Alerts -> "camsys_subway-alerts"
   }
 }
 
 fn gtfs_rt_feed_path(feed: GtfsRtFeed) -> String {
-  "Dataservice/mtagtfsfeeds/nyct%2F" <> gtfs_rt_feed_filename(feed)
-}
-
-pub fn gtfs_rt_feed_from_route(route: st.Route) -> GtfsRtFeed {
-  case route {
-    st.A | st.C | st.E | st.Sr -> ACESr
-    st.B | st.D | st.F | st.FX | st.M | st.Sf -> BDFMSf
-    st.G -> G
-    st.J | st.Z -> JZ
-    st.N | st.Q | st.R | st.W -> NQRW
-    st.L -> L
-    st.N1
-    | st.N2
-    | st.N3
-    | st.N4
-    | st.N5
-    | st.N6
-    | st.N6X
-    | st.N7
-    | st.N7X
-    | st.S -> S1234567
-    st.Si -> Si
-  }
+  "Dataservice/mtagtfsfeeds/"
+  <> gtfs_rt_feed_filename(feed) |> string.replace(each: "_", with: "%2F")
 }
 
 fn fetch_gtfs_rt_bin(feed: GtfsRtFeed) -> Result(BitArray, httpc.HttpError) {
