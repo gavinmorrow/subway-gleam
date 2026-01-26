@@ -90,11 +90,8 @@ pub fn stop(
 
       let after_start = case period.start {
         option.Some(start) -> {
-          // Turn the duration into a negative
-          let display_before_active =
-            alert.display_before_active
-            |> duration.difference(duration.seconds(0))
-          let start = start |> timestamp.add(display_before_active)
+          let start =
+            util.timestamp_subtract(start, alert.display_before_active)
           timestamp.compare(start, current_time) != order.Gt
         }
         option.None -> True

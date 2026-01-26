@@ -38,3 +38,12 @@ pub fn unix_time_to_timestamp(
   let gtfs_rt_nyct.UnixTime(start) = start
   timestamp.from_unix_seconds(start)
 }
+
+// See <https://github.com/gleam-lang/time/issues/41>
+pub fn timestamp_subtract(
+  timestamp: timestamp.Timestamp,
+  duration: duration.Duration,
+) -> timestamp.Timestamp {
+  let negated_duration = duration.difference(duration, duration.seconds(0))
+  timestamp.add(timestamp, negated_duration)
+}
