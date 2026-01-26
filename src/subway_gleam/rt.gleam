@@ -83,7 +83,7 @@ pub type Alert {
     /// given, the alert will be shown during all of them.
     active_periods: List(TimeRange),
     /// Entities whose users we should notify of this alert.
-    target: List(gtfs_rt_nyct.EntitySelector),
+    targets: List(gtfs_rt_nyct.EntitySelector),
     /// A headline to describe the high-level impacts of a disruption. Headlines
     /// are capped at 160 characters.
     header: RichText,
@@ -226,7 +226,7 @@ pub fn analyze(raw: gtfs_rt_nyct.FeedMessage) -> Data {
               active_periods,
               time_range.from_gtfs_rt_nyct,
             ),
-            target: informed_entities,
+            targets: informed_entities,
             header: rich_text.from_translated_string(header_text),
             description: option.map(
               description_text,
