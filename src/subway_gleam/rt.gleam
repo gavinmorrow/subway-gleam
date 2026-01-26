@@ -4,12 +4,17 @@ import gleam/http/request
 import gleam/httpc
 import gleam/list
 import gleam/option
+import gleam/pair
 import gleam/result
+import gleam/time/duration
 import gleam/time/timestamp
 import gtfs_rt_nyct
 import protobin
 import simplifile
+import subway_gleam/internal/util
 
+import subway_gleam/rt/rich_text.{type RichText}
+import subway_gleam/rt/time_range.{type TimeRange}
 import subway_gleam/st
 
 // TODO: find a better name
@@ -69,7 +74,46 @@ pub fn train_id_to_string(train_id: TrainId) -> String {
 }
 
 pub type Alert {
-  Alert(targets: List(gtfs_rt_nyct.EntitySelector), content: String)
+  Alert(
+    id: String,
+    /// Time when the alert should be shown to the user. If missing, the alert
+    /// will be shown as long as it appears in the feed. If multiple ranges are
+    /// given, the alert will be shown during all of them.
+    active_periods: List(TimeRange),
+    /// Entities whose users we should notify of this alert.
+    target: List(gtfs_rt_nyct.EntitySelector),
+    /// A headline to describe the high-level impacts of a disruption. Headlines
+    /// are capped at 160 characters.
+    header: RichText,
+    /// Provides full details of a disruption’s impacts. Details do not have a character limit.
+    description: option.Option(RichText),
+    /// Time when the message was created in Mercury (not to be confused with
+    /// active_period start time.
+    created: option.Option(timestamp.Timestamp),
+    /// Time when the message was last updated in Mercury. 
+    updated: option.Option(timestamp.Timestamp),
+    /// The service status category for the alert (e.g. “Delays”).
+    ///
+    /// While there are a standard set of service status categories, the MTA
+    /// may add/remove/change them so data consumers should treat this as a free
+    /// text field.
+    alert_type: option.Option(String),
+    /// An array of station alternatives for some planned work messages. Each
+    /// station has an affectedEntity with agencyId and stopId and a notes
+    /// object consisting of TranslatedStrings
+    station_alternatives: List(#(gtfs_rt_nyct.EntitySelector, RichText)),
+    /// Number of seconds before the active_period start time that the MTA sets
+    /// a message to appear on our homepage to give customers advance notice
+    /// of a planned service change. The value for service alerts is 0 and the
+    /// default value for planned work messages is 3600.
+    display_before_active: duration.Duration,
+    /// A human-readable summary of the dates and times when a planned service
+    /// change impacts customers.
+    human_readable_active_period: option.Option(RichText),
+    /// If the message was duplicated from a previous message, this is the id of
+    /// the original message.
+    clone_id: option.Option(String),
+  )
 }
 
 pub type GtfsRtFeed {
@@ -184,8 +228,57 @@ pub fn fetch_gtfs(
 pub fn analyze(raw: gtfs_rt_nyct.FeedMessage) -> Data {
   list.fold(over: raw.entity, from: empty_data(), with: fn(acc, entity) {
     case entity.data {
-      gtfs_rt_nyct.Alert(informed_entities: targets, header_text: content) -> {
-        let alert = Alert(targets:, content:)
+      gtfs_rt_nyct.Alert(
+        active_periods:,
+        informed_entities:,
+        header_text:,
+        description_text:,
+        mercury_alert:,
+      ) -> {
+        let alert =
+          Alert(
+            id: entity.id,
+            active_periods: list.map(
+              active_periods,
+              time_range.from_gtfs_rt_nyct,
+            ),
+            target: informed_entities,
+            header: rich_text.from_translated_string(header_text),
+            description: option.map(
+              description_text,
+              rich_text.from_translated_string,
+            ),
+            created: option.map(mercury_alert, fn(m) {
+              util.unix_time_to_timestamp(m.created_at)
+            }),
+            updated: option.map(mercury_alert, fn(m) {
+              util.unix_time_to_timestamp(m.updated_at)
+            }),
+            alert_type: option.map(mercury_alert, fn(m) { m.alert_type }),
+            station_alternatives: option.map(mercury_alert, fn(m) {
+              list.map(m.station_alternatives, pair.map_second(
+                _,
+                with: rich_text.from_translated_string,
+              ))
+            })
+              |> option.unwrap(or: []),
+            display_before_active: option.map(mercury_alert, fn(m) {
+              m.display_before_active
+            })
+              // "The value for service alerts is 0 and the default value for planned work
+              // messages is 3600."
+              // My logic is that if it's in the gtfs ahead of time, it must be planned
+              // work, and therefore should have a default of 3600. If it's not planned
+              // work, the active period will be *now* so setting it to appear 3600sec
+              // early won't change anything.
+              |> option.unwrap(or: 3600)
+              |> duration.seconds,
+            human_readable_active_period: option.then(mercury_alert, fn(m) {
+              m.human_readable_active_period
+            })
+              |> option.map(rich_text.from_translated_string),
+            clone_id: option.then(mercury_alert, fn(m) { m.clone_id }),
+          )
         Data(..acc, alerts: [alert, ..acc.alerts])
       }
       gtfs_rt_nyct.TripUpdate(trip:, stop_time_updates:) -> {

@@ -84,27 +84,28 @@ pub fn stop(
   let alerts =
     gtfs.alerts
     |> list.filter(fn(alert) {
-      use target <- list.any(in: alert.targets)
-      let matches_route_id =
-        target.route_id
-        |> option.then(fn(route) { st.parse_route(route) |> option.from_result })
-        |> option.map(fn(route) { set.contains(route, in: routes) })
-        |> option.unwrap(or: False)
-      let matches_trip =
-        target.trip
-        |> option.map(fn(trip) {
-          case st.parse_route(trip.route_id) {
-            Ok(route) -> set.contains(route, in: routes)
-            Error(_) -> False
-          }
-        })
-        |> option.unwrap(or: False)
-      matches_route_id || matches_trip
+      // use target <- list.any(in: alert.targets)
+      // let matches_route_id =
+      //   target.route_id
+      //   |> option.then(fn(route) { st.parse_route(route) |> option.from_result })
+      //   |> option.map(fn(route) { set.contains(route, in: routes) })
+      //   |> option.unwrap(or: False)
+      // let matches_trip =
+      //   target.trip
+      //   |> option.map(fn(trip) {
+      //     case st.parse_route(trip.route_id) {
+      //       Ok(route) -> set.contains(route, in: routes)
+      //       Error(_) -> False
+      //     }
+      //   })
+      //   |> option.unwrap(or: False)
+      // matches_route_id || matches_trip
+      todo
     })
     |> list.map(fn(alert) {
       html.div([], [
         html.p([], [html.text(string.inspect(alert))]),
-        html.p([], [html.text(alert.content)]),
+        // html.p([], [html.text(alert.content)]),
       ])
     })
 
