@@ -137,3 +137,45 @@ body {
     }
   }
 }
+
+.alerts {
+  display: flex;
+  flex-direction: column;
+
+  padding: 0;
+  gap: 1em;
+
+  .alert {
+    --hue-yellow: 107.22;
+    background-color: oklch(from var(--color-bg-1) l c var(--hue-yellow));
+    border: 1px solid oklch(0.66 0.16 var(--hue-yellow));
+
+    padding: 0.5em;
+    border-radius: 0.5em;
+
+    summary {
+      font-weight: bold;
+    }
+
+    p {
+      margin: 0;
+      min-height: 0 !important;
+    }
+
+    .alert-last-updated {
+      font-style: italic;
+      color: oklch(from var(--color-text) 0.7 c h);
+    }
+
+    .alert-id {
+      color: oklch(from var(--color-text) 0.7 c h);
+      font-size: small;
+    }
+
+    & > *:not(summary),
+    p:has(strong:only-child) {
+      margin-top: 0.75em;
+      margin-bottom: 0.25em;
+    }
+  }
+}

@@ -17,6 +17,7 @@ import subway_gleam/component
 import subway_gleam/internal/util
 import subway_gleam/lustre_middleware.{Document, try_lustre_res}
 import subway_gleam/rt
+import subway_gleam/rt/rich_text
 import subway_gleam/st
 import subway_gleam/state
 import subway_gleam/state/gtfs_actor
@@ -123,9 +124,52 @@ pub fn stop(
       matches_route_id || matches_stop
     })
     |> list.map(fn(alert) {
-      html.div([], [
-        html.p([], [html.text(string.inspect(alert))]),
-        // html.p([], [html.text(alert.content)]),
+      let rt.Alert(
+        id:,
+        active_periods: _,
+        targets: _,
+        header:,
+        description:,
+        created: _,
+        updated:,
+        alert_type:,
+        station_alternatives:,
+        display_before_active: _,
+        human_readable_active_period:,
+        clone_id:,
+      ) = alert
+
+      let alert_type = alert_type |> option.unwrap(or: "Alert") |> html.text
+
+      let header = rich_text.as_html(header)
+      let description =
+        description
+        |> option.map(rich_text.as_html)
+        |> option.unwrap(or: element.none())
+
+      let human_readable_active_period =
+        human_readable_active_period |> option.map(rich_text.as_html)
+      let last_updated =
+        option.map(updated, fn(updated) {
+          let str = updated |> util.min_from_now |> int.negate |> int.to_string
+          html.text("Last updated: " <> str <> "min ago")
+        })
+      let active_period_or_last_updated =
+        option.or(human_readable_active_period, last_updated)
+        |> option.map(fn(elem) {
+          html.div([attribute.class("alert-last-updated")], [elem])
+        })
+        |> option.unwrap(or: element.none())
+
+      let alert_id = html.p([attribute.class("alert-id")], [html.text(id)])
+
+      html.details([attribute.class("alert")], [
+        html.summary([], [alert_type]),
+        header,
+        active_period_or_last_updated,
+        html.hr([]),
+        description,
+        alert_id,
       ])
     })
 
@@ -159,14 +203,17 @@ pub fn stop(
     html.h1([], [
       html.text(stop.name),
     ]),
-    html.p([], [
+    html.aside([], [
       html.text(
         "Last updated "
         <> { last_updated |> timestamp.to_rfc3339(duration.hours(-4)) },
       ),
     ]),
-    html.p([], [html.text("Transfer to:"), ..transfers]),
-    html.p([], [html.text("Alerts:"), ..alerts]),
+    html.aside([], [html.text("Transfer to:"), ..transfers]),
+    html.aside([], [
+      html.text("Alerts:"),
+      html.ul([attribute.class("alerts")], alerts),
+    ]),
     html.h2([], [html.text("Uptown")]),
     html.ul([attribute.class("arrival-list")], uptown),
     html.h2([], [html.text("Downtown")]),
