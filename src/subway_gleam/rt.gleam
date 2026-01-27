@@ -9,7 +9,6 @@ import gleam/result
 import gleam/string
 import gleam/time/duration
 import gleam/time/timestamp
-import gleam/uri
 import gtfs_rt_nyct
 import protobin
 import simplifile
