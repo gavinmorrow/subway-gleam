@@ -214,56 +214,7 @@ pub fn alerts(
   let gtfs_actor.Data(current: gtfs, last_updated:) = state.fetch_gtfs(state)
 
   let alerts = filter_alerts(gtfs, routes, stop_id)
-  let alerts =
-    list.map(alerts, fn(alert) {
-      let rt.Alert(
-        id:,
-        active_periods: _,
-        targets: _,
-        header:,
-        description:,
-        created: _,
-        updated:,
-        alert_type:,
-        station_alternatives:,
-        display_before_active: _,
-        human_readable_active_period:,
-        clone_id:,
-      ) = alert
-
-      let alert_type = alert_type |> option.unwrap(or: "Alert") |> html.text
-
-      let header = rich_text.as_html(header)
-      let description =
-        description
-        |> option.map(rich_text.as_html)
-        |> option.unwrap(or: element.none())
-
-      let human_readable_active_period =
-        human_readable_active_period |> option.map(rich_text.as_html)
-      let last_updated =
-        option.map(updated, fn(updated) {
-          let str = updated |> util.min_from_now |> int.negate |> int.to_string
-          html.text("Last updated: " <> str <> "min ago")
-        })
-      let active_period_or_last_updated =
-        option.or(human_readable_active_period, last_updated)
-        |> option.map(fn(elem) {
-          html.div([attribute.class("alert-last-updated")], [elem])
-        })
-        |> option.unwrap(or: element.none())
-
-      let alert_id = html.p([attribute.class("alert-id")], [html.text(id)])
-
-      html.details([attribute.class("alert")], [
-        html.summary([], [alert_type]),
-        header,
-        active_period_or_last_updated,
-        html.hr([]),
-        description,
-        alert_id,
-      ])
-    })
+  let alerts = list.map(alerts, alert_detail)
 
   let head = [html.title([], "Trains at " <> stop.name)]
   let body = [
@@ -282,6 +233,56 @@ pub fn alerts(
   ]
 
   Ok(#(Document(head:, body:), wisp.response(200)))
+}
+
+fn alert_detail(alert: rt.Alert) -> element.Element(msg) {
+  let rt.Alert(
+    id:,
+    active_periods: _,
+    targets: _,
+    header:,
+    description:,
+    created: _,
+    updated:,
+    alert_type:,
+    station_alternatives:,
+    display_before_active: _,
+    human_readable_active_period:,
+    clone_id:,
+  ) = alert
+
+  let alert_type = alert_type |> option.unwrap(or: "Alert") |> html.text
+
+  let header = rich_text.as_html(header)
+  let description =
+    description
+    |> option.map(rich_text.as_html)
+    |> option.unwrap(or: element.none())
+
+  let human_readable_active_period =
+    human_readable_active_period |> option.map(rich_text.as_html)
+  let last_updated =
+    option.map(updated, fn(updated) {
+      let str = updated |> util.min_from_now |> int.negate |> int.to_string
+      html.text("Last updated: " <> str <> "min ago")
+    })
+  let active_period_or_last_updated =
+    option.or(human_readable_active_period, last_updated)
+    |> option.map(fn(elem) {
+      html.div([attribute.class("alert-last-updated")], [elem])
+    })
+    |> option.unwrap(or: element.none())
+
+  let alert_id = html.p([attribute.class("alert-id")], [html.text(id)])
+
+  html.details([attribute.class("alert")], [
+    html.summary([], [alert_type]),
+    header,
+    active_period_or_last_updated,
+    html.hr([]),
+    description,
+    alert_id,
+  ])
 }
 
 fn error_invalid_stop(
