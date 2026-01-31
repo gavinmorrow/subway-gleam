@@ -4,6 +4,7 @@ import gleam/otp/actor
 import gleam/result
 import mist
 import repeatedly
+import subway_gleam/normalize_path_trailing_slash.{normalize_path_trailing_slash}
 import subway_gleam/schedule_sample
 import subway_gleam/st
 import wisp
@@ -49,6 +50,13 @@ fn handler(state: state.State, req: wisp.Request) -> wisp.Response {
   use req <- wisp.csrf_known_header_protection(req)
 
   use <- wisp.serve_static(req, under: "/static", from: state.priv_dir)
+
+  // Only apply this to non-static files
+  // 
+  // Doing this because it allows routes to use relative paths to drill down
+  // into details. e.g. the stop route has a link, `./alerts`, that will
+  // redirect to the alerts page for the stop.
+  use req <- normalize_path_trailing_slash(req)
 
   case wisp.path_segments(req) {
     [] -> route.index(req)
