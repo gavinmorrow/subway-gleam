@@ -26,6 +26,8 @@ pub fn not_found(req: wisp.Request) -> wisp.Response {
 
 pub const stop = stop.stop
 
+pub const stop_alerts = stop.alerts
+
 pub const train = train.train
 
 pub const line = line.line

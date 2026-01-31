@@ -53,6 +53,7 @@ fn handler(state: state.State, req: wisp.Request) -> wisp.Response {
   case wisp.path_segments(req) {
     [] -> route.index(req)
     ["stop", stop_id] -> route.stop(req, state, stop_id)
+    ["stop", stop_id, "alerts"] -> route.stop_alerts(req, state, stop_id)
     ["train", train_id] -> route.train(req, state, train_id)
     ["line", route_id] -> route.line(req, state, route_id)
     _ -> route.not_found(req)

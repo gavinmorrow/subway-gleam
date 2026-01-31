@@ -82,6 +82,69 @@ pub fn stop(
 
   let gtfs_actor.Data(current: gtfs, last_updated:) = state.fetch_gtfs(state)
 
+  let alerts = filter_alerts(gtfs, routes, stop_id)
+  let alert_summary =
+    alerts
+    |> list.map(fn(alert) { option.unwrap(alert.alert_type, or: "Alert") })
+    |> list.unique
+    |> string.join(with: ", ")
+  let num_alerts = list.length(alerts) |> int.to_string
+  let alert_summary = num_alerts <> " Alerts: " <> alert_summary
+
+  let #(uptown, downtown) =
+    gtfs.arrivals
+    |> dict.get(stop_id)
+    |> result.unwrap(or: [])
+    |> list.sort(by: fn(a, b) {
+      timestamp.compare(a.time, b.time) |> order.negate
+    })
+    |> list.filter(keeping: fn(a) {
+      // Strip out times that are in the past
+      case timestamp.compare(a.time, util.current_time()) {
+        order.Eq | order.Gt -> True
+        order.Lt -> False
+      }
+    })
+    |> list.fold(from: #([], []), with: fn(acc, update) {
+      let #(uptown_acc, downtown_acc) = acc
+      let li = arrival_li(update, state.schedule, gtfs, highlighted_train)
+      case update.direction {
+        st.North -> #([li, ..uptown_acc], downtown_acc)
+        st.South -> #(uptown_acc, [li, ..downtown_acc])
+      }
+    })
+  // let uptown = uptown |> list.take(from: _, up_to: 10)
+  // let downtown = downtown |> list.take(from: _, up_to: 10)
+
+  let head = [html.title([], "Trains at " <> stop.name)]
+  let body = [
+    html.h1([], [
+      html.text(stop.name),
+    ]),
+    html.aside([], [
+      html.text(
+        "Last updated "
+        <> { last_updated |> timestamp.to_rfc3339(duration.hours(-4)) },
+      ),
+    ]),
+    html.aside([], [html.text("Transfer to:"), ..transfers]),
+    html.aside([], [
+      html.a([attribute.href("./alerts")], [html.text(alert_summary)]),
+    ]),
+    html.h2([], [html.text("Uptown")]),
+    html.ul([attribute.class("arrival-list")], uptown),
+    html.h2([], [html.text("Downtown")]),
+    html.ul([attribute.class("arrival-list")], downtown),
+  ]
+
+  Ok(#(Document(head:, body:), wisp.response(200)))
+}
+
+fn filter_alerts(
+  gtfs: rt.Data,
+  routes: set.Set(st.Route),
+  stop_id: st.StopId,
+) -> List(rt.Alert) {
   let current_time = util.current_time()
   let alerts =
     gtfs.alerts
@@ -123,7 +186,36 @@ pub fn stop(
 
       matches_route_id || matches_stop
     })
-    |> list.map(fn(alert) {
+  alerts
+}
+
+pub fn alerts(
+  req: wisp.Request,
+  state: state.State,
+  stop_id: String,
+) -> wisp.Response {
+  use _req <- try_lustre_res(req)
+
+  use stop_id <- result.try(
+    st.parse_stop_id_no_direction(stop_id)
+    |> result.replace_error(error_invalid_stop(stop_id)),
+  )
+  use stop <- result.try(
+    state.schedule.stops
+    |> dict.get(#(stop_id, option.None))
+    |> result.replace_error(error_unknown_stop(stop_id)),
+  )
+
+  let routes =
+    state.schedule.stop_routes
+    |> dict.get(stop_id)
+    |> result.unwrap(or: set.new())
+
+  let gtfs_actor.Data(current: gtfs, last_updated:) = state.fetch_gtfs(state)
+
+  let alerts = filter_alerts(gtfs, routes, stop_id)
+  let alerts =
+    list.map(alerts, fn(alert) {
       let rt.Alert(
         id:,
         active_periods: _,
@@ -173,31 +265,6 @@ pub fn stop(
       ])
     })
 
-  let #(uptown, downtown) =
-    gtfs.arrivals
-    |> dict.get(stop_id)
-    |> result.unwrap(or: [])
-    |> list.sort(by: fn(a, b) {
-      timestamp.compare(a.time, b.time) |> order.negate
-    })
-    |> list.filter(keeping: fn(a) {
-      // Strip out times that are in the past
-      case timestamp.compare(a.time, util.current_time()) {
-        order.Eq | order.Gt -> True
-        order.Lt -> False
-      }
-    })
-    |> list.fold(from: #([], []), with: fn(acc, update) {
-      let #(uptown_acc, downtown_acc) = acc
-      let li = arrival_li(update, state.schedule, gtfs, highlighted_train)
-      case update.direction {
-        st.North -> #([li, ..uptown_acc], downtown_acc)
-        st.South -> #(uptown_acc, [li, ..downtown_acc])
-      }
-    })
-  // let uptown = uptown |> list.take(from: _, up_to: 10)
-  // let downtown = downtown |> list.take(from: _, up_to: 10)
-
   let head = [html.title([], "Trains at " <> stop.name)]
   let body = [
     html.h1([], [
@@ -209,15 +276,9 @@ pub fn stop(
         <> { last_updated |> timestamp.to_rfc3339(duration.hours(-4)) },
       ),
     ]),
-    html.aside([], [html.text("Transfer to:"), ..transfers]),
     html.aside([], [
-      html.text("Alerts:"),
       html.ul([attribute.class("alerts")], alerts),
     ]),
-    html.h2([], [html.text("Uptown")]),
-    html.ul([attribute.class("arrival-list")], uptown),
-    html.h2([], [html.text("Downtown")]),
-    html.ul([attribute.class("arrival-list")], downtown),
   ]
 
   Ok(#(Document(head:, body:), wisp.response(200)))
