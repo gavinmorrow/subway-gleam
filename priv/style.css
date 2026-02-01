@@ -8,6 +8,10 @@
   --bullet-size: 1.5em;
 }
 
+a {
+  color: lightblue;
+}
+
 html,
 body {
   background-color: var(--color-bg-0);
