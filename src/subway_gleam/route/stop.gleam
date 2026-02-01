@@ -377,6 +377,10 @@ fn arrival_li(
   let train_id_percent_encode =
     update.trip.nyct.train_id
     |> option.map(uri.percent_encode)
+    |> option.map(
+      // uri.percent_encode doesn't encode pluses
+      string.replace(_, each: "+", with: "%2B"),
+    )
   let train_url =
     train_id_percent_encode
     |> option.map(fn(id) {

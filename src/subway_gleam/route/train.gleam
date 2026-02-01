@@ -5,6 +5,7 @@ import gleam/option
 import gleam/pair
 import gleam/result
 import gleam/set
+import gleam/string
 import gleam/time/duration
 import gleam/time/timestamp
 import gleam/uri
@@ -115,7 +116,12 @@ fn stop_li(
 ) -> element.Element(msg) {
   let stop_url = {
     let stop_id = stop.id |> st.stop_id_to_string(direction: option.None)
-    let train_id = train_id |> rt.train_id_to_string |> uri.percent_encode
+    let train_id =
+      train_id
+      |> rt.train_id_to_string
+      |> uri.percent_encode
+      // uri.percent_encode doesn't encode pluses
+      |> string.replace(each: "+", with: "%2B")
     let query = uri.query_to_string([#("train_id", train_id)])
     "/stop/" <> stop_id <> "?" <> query
   }
