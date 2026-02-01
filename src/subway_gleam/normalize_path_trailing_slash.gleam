@@ -1,3 +1,4 @@
+import gleam/option
 import gleam/string
 import wisp
 
@@ -7,6 +8,10 @@ pub fn normalize_path_trailing_slash(
 ) -> wisp.Response {
   case string.ends_with(req.path, "/") {
     True -> next(req)
-    False -> wisp.permanent_redirect(to: req.path <> "/")
+    False ->
+      case req.query {
+        option.Some(q) -> wisp.redirect(to: req.path <> "/?" <> q)
+        option.None -> wisp.permanent_redirect(to: req.path <> "/")
+      }
   }
 }
