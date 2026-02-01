@@ -193,6 +193,7 @@ pub fn alerts(
   req: wisp.Request,
   state: state.State,
   stop_id: String,
+  route_id: option.Option(String),
 ) -> wisp.Response {
   use _req <- try_lustre_res(req)
 
@@ -206,15 +207,49 @@ pub fn alerts(
     |> result.replace_error(error_unknown_stop(stop_id)),
   )
 
-  let routes =
+  let all_routes =
     state.schedule.stop_routes
     |> dict.get(stop_id)
     |> result.unwrap(or: set.new())
+  let route =
+    route_id |> option.to_result(Nil) |> result.try(st.route_id_long_to_route)
+  let routes = case route {
+    Ok(route) -> set.new() |> set.insert(route)
+    Error(Nil) -> all_routes
+  }
 
   let gtfs_actor.Data(current: gtfs, last_updated:) = state.fetch_gtfs(state)
 
+  let route_selections = {
+    let bullets =
+      all_routes
+      |> set.map(fn(route) {
+        let route_id = st.route_to_long_id(route)
+        let route = st.route_data(in: state.schedule, for: route)
+        html.a(
+          [attribute.class("bullet-group"), attribute.href("../" <> route_id)],
+          [component.route_bullet(route)],
+        )
+      })
+      |> set.to_list
+    html.aside([], [
+      html.a(
+        [
+          attribute.class("bullet-group"),
+          attribute.href("../all"),
+        ],
+        [html.text("All")],
+      ),
+      ..bullets
+    ])
+  }
+
   let alerts = filter_alerts(gtfs, routes, stop_id)
   let alerts = list.map(alerts, alert_detail)
+  let alerts_list = case list.is_empty(alerts) {
+    True -> html.p([], [html.text("Woah...no alerts for this line!")])
+    False -> html.ul([attribute.class("alerts")], alerts)
+  }
 
   let head = [html.title([], "Trains at " <> stop.name)]
   let body = [
@@ -227,8 +262,9 @@ pub fn alerts(
         <> { last_updated |> timestamp.to_rfc3339(duration.hours(-4)) },
       ),
     ]),
-    html.aside([], [
-      html.ul([attribute.class("alerts")], alerts),
+    route_selections,
+    html.main([], [
+      alerts_list,
     ]),
   ]
 
