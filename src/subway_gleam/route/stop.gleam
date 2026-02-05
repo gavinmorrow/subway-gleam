@@ -262,6 +262,9 @@ pub fn alerts(
         <> { last_updated |> timestamp.to_rfc3339(duration.hours(-4)) },
       ),
     ]),
+    html.nav([], [
+      html.a([attribute.href("../../")], [html.text("Back to arrivals")]),
+    ]),
     route_selections,
     html.main([], [
       alerts_list,
