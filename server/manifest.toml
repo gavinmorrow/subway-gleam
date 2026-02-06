@@ -30,6 +30,7 @@ packages = [
   { name = "platform", version = "1.0.0", build_tools = ["gleam"], requirements = [], otp_app = "platform", source = "hex", outer_checksum = "8339420A95AD89AAC0F82F4C3DB8DD401041742D6C3F46132A8739F6AEB75391" },
   { name = "protobin", version = "2.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "protobin", source = "hex", outer_checksum = "B006A097D57A19963AD9AA5AEE090F252C88AB6B74F16BE826E5C296B6647B90" },
   { name = "repeatedly", version = "2.1.2", build_tools = ["gleam"], requirements = [], otp_app = "repeatedly", source = "hex", outer_checksum = "93AE1938DDE0DC0F7034F32C1BF0D4E89ACEBA82198A1FE21F604E849DA5F589" },
+  { name = "shared", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], source = "local", path = "../shared" },
   { name = "shellout", version = "1.7.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "shellout", source = "hex", outer_checksum = "1BDC03438FEB97A6AF3E396F4ABEB32BECF20DF2452EC9A8C0ACEB7BDDF70B14" },
   { name = "simplifile", version = "2.3.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_stdlib"], otp_app = "simplifile", source = "hex", outer_checksum = "0A868DAC6063D9E983477981839810DC2E553285AB4588B87E3E9C96A7FB4CB4" },
   { name = "splitter", version = "1.1.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "splitter", source = "hex", outer_checksum = "05564A381580395DCDEFF4F88A64B021E8DAFA6540AE99B4623962F52976AA9D" },
@@ -51,6 +52,7 @@ lustre = { version = ">= 5.3.5 and < 6.0.0" }
 mist = { version = ">= 5.0.3 and < 6.0.0" }
 protobin = { version = ">= 2.0.0 and < 3.0.0" }
 repeatedly = { version = ">= 2.1.2 and < 3.0.0" }
+shared = { path = "../shared" }
 shellout = { version = ">= 1.7.0 and < 2.0.0" }
 simplifile = { version = ">= 2.3.0 and < 3.0.0" }
 wisp = { version = ">= 2.0.0 and < 3.0.0" }
