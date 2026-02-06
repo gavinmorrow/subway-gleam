@@ -13,6 +13,7 @@ import gleam/uri
 import lustre/attribute
 import lustre/element
 import lustre/element/html
+import shared/route/stop
 import subway_gleam/component
 import subway_gleam/internal/util
 import subway_gleam/lustre_middleware.{Document, try_lustre_res}
@@ -118,23 +119,16 @@ pub fn stop(
 
   let head = [html.title([], "Trains at " <> stop.name)]
   let body = [
-    html.h1([], [
-      html.text(stop.name),
-    ]),
-    html.aside([], [
-      html.text(
-        "Last updated "
-        <> { last_updated |> timestamp.to_rfc3339(duration.hours(-4)) },
+    html.div([attribute.id("app")], [
+      stop.view(
+        name: stop.name,
+        last_updated:,
+        transfers:,
+        alert_summary:,
+        uptown:,
+        downtown:,
       ),
     ]),
-    html.aside([], [html.text("Transfer to:"), ..transfers]),
-    html.aside([], [
-      html.a([attribute.href("./alerts")], [html.text(alert_summary)]),
-    ]),
-    html.h2([], [html.text("Uptown")]),
-    html.ul([attribute.class("arrival-list")], uptown),
-    html.h2([], [html.text("Downtown")]),
-    html.ul([attribute.class("arrival-list")], downtown),
   ]
 
   Ok(#(Document(head:, body:), wisp.response(200)))
