@@ -422,11 +422,6 @@ pub type Route {
   Si
 }
 
-pub type BulletShape {
-  Circle
-  Diamond
-}
-
 pub fn bullet_shape(for route: Route) -> BulletShape {
   case route {
     N6X | N7X | FX -> Diamond

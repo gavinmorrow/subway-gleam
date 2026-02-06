@@ -117,17 +117,20 @@ pub fn stop(
   // let uptown = uptown |> list.take(from: _, up_to: 10)
   // let downtown = downtown |> list.take(from: _, up_to: 10)
 
+  let model =
+    stop.Model(
+      name: stop.name,
+      last_updated:,
+      transfers:,
+      alert_summary:,
+      uptown:,
+      downtown:,
+    )
+
   let head = [html.title([], "Trains at " <> stop.name)]
   let body = [
     html.div([attribute.id("app")], [
-      stop.view(
-        name: stop.name,
-        last_updated:,
-        transfers:,
-        alert_summary:,
-        uptown:,
-        downtown:,
-      ),
+      stop.view(model),
     ]),
   ]
 
