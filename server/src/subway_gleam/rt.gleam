@@ -169,7 +169,7 @@ fn fetch_gtfs_rt_bin(feed: GtfsRtFeed) -> Result(BitArray, httpc.HttpError) {
   case comp_flags.use_local_rt {
     True -> {
       let name = gtfs_rt_feed_filename(feed)
-      let path = "./gtfs_rt_samples/" <> name
+      let path = "../gtfs_rt_samples/" <> name
       let assert Ok(bits) = simplifile.read_bits(from: path)
       Ok(bits)
     }
@@ -194,7 +194,7 @@ pub fn fetch_gtfs(
   let assert Ok(Nil) = case comp_flags.save_fetched_rt {
     True -> {
       let filename = gtfs_rt_feed_filename(feed)
-      simplifile.write_bits(bits, to: "./gtfs_rt_samples/" <> filename)
+      simplifile.write_bits(bits, to: "../gtfs_rt_samples/" <> filename)
     }
     False -> Ok(Nil)
   }

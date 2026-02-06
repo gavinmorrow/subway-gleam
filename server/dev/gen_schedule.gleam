@@ -100,7 +100,7 @@ pub fn schedule() {
 pub fn main() -> Nil {
   io.println_error("Fetching...")
   // let assert Ok(bits) = st.fetch_bin(st.Regular)
-  let assert Ok(bits) = simplifile.read_bits(from: "./gtfs_subway.zip")
+  let assert Ok(bits) = simplifile.read_bits(from: "../gtfs_subway.zip")
   io.println_error("Parsing...")
   let assert Ok(schedule) = st.parse(bits)
   io.println_error("Generating...")
