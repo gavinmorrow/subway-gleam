@@ -2,17 +2,17 @@ import gleam/io
 import gleam/string
 import shellout
 import simplifile
-import subway_gleam/st
+import subway_gleam/gtfs/st
 
-const path = "src/subway_gleam/schedule_sample"
+const path = "src/subway_gleam/gtfs/st/schedule_sample"
 
-const stops_prefix = "import subway_gleam/st.{North, South, Stop, StopId}
+const stops_prefix = "import subway_gleam/gtfs/st.{North, South, Stop, StopId}
 
 import gleam/dict
 import gleam/option.{None, Some}
 "
 
-const trips_prefix = "import subway_gleam/st.{
+const trips_prefix = "import subway_gleam/gtfs/st.{
   type ShapeId, A, B, C, D, E, F, FX, G, J, L, M, N, N1, N2, N3, N4, N5, N6, N6X,
   N7, N7X, Q, R, S, Sf, Si, Sr, TripId, Trips, W, Z, parse_shape_id,
 }
@@ -25,7 +25,7 @@ fn shape_id(shape_id: String) -> ShapeId {
 }
 "
 
-const services_prefix = "import subway_gleam/st.{
+const services_prefix = "import subway_gleam/gtfs/st.{
   A, B, C, D, E, F, FX, G, J, L, M, N, N1, N2, N3, N4, N5, N6, N6X, N7, N7X, Q,
   R, S, Service, Sf, Si, Sr, StopId, W, Z,
 }
@@ -38,7 +38,7 @@ fn set(dict: dict.Dict(a, b)) -> set.Set(a) {
 }
 "
 
-const stop_routes_prefix = "import subway_gleam/st.{
+const stop_routes_prefix = "import subway_gleam/gtfs/st.{
   A, B, C, D, E, F, FX, G, J, L, M, N, N1, N2, N3, N4, N5, N6, N6X, N7, N7X, Q,
   R, S, Sf, Si, Sr, StopId, W, Z,
 }
@@ -51,7 +51,7 @@ fn set(dict: dict.Dict(a, b)) -> set.Set(a) {
 }
 "
 
-const transfers_prefix = "import subway_gleam/st.{StopId, Transfer}
+const transfers_prefix = "import subway_gleam/gtfs/st.{StopId, Transfer}
 
 import gleam/dict
 import gleam/set
@@ -67,7 +67,7 @@ fn duration(secs: Int, nanos: Int) -> Duration {
 }
 "
 
-const routes_prefix = "import subway_gleam/st.{
+const routes_prefix = "import subway_gleam/gtfs/st.{
   A, B, C, D, E, F, FX, G, J, L, M, N, N1, N2, N3, N4, N5, N6, N6X, N7, N7X, Q,
   R, RouteData, S, Sf, Si, Sr, W, Z,
 }
@@ -76,13 +76,13 @@ import gleam/dict
 "
 
 const schedule_code = "//// A sample schedule to use that doesn't take forever to parse.
-import subway_gleam/st.{Schedule}
-import subway_gleam/schedule_sample/stops.{stops}
-import subway_gleam/schedule_sample/trips.{trips}
-import subway_gleam/schedule_sample/services.{services}
-import subway_gleam/schedule_sample/stop_routes.{stop_routes}
-import subway_gleam/schedule_sample/transfers.{transfers}
-import subway_gleam/schedule_sample/routes.{routes}
+import subway_gleam/gtfs/st.{Schedule}
+import subway_gleam/gtfs/st/schedule_sample/stops.{stops}
+import subway_gleam/gtfs/st/schedule_sample/trips.{trips}
+import subway_gleam/gtfs/st/schedule_sample/services.{services}
+import subway_gleam/gtfs/st/schedule_sample/stop_routes.{stop_routes}
+import subway_gleam/gtfs/st/schedule_sample/transfers.{transfers}
+import subway_gleam/gtfs/st/schedule_sample/routes.{routes}
 
 /// A sample schedule to use that doesn't take forever to parse.
 pub fn schedule() {
@@ -169,7 +169,7 @@ pub fn main() -> Nil {
       contents: routes_prefix <> "pub fn routes() {" <> routes_str <> "}",
     )
 
-  io.println_error("Writing to src/subway_gleam/schedule_sample.gleam...")
+  io.println_error("Writing to " <> path <> "...")
   let assert Ok(Nil) =
     simplifile.write(to: path <> ".gleam", contents: schedule_code)
 

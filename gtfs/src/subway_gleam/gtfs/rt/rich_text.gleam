@@ -4,18 +4,12 @@ import gleam/option
 import gleam/result
 import gleam/string
 import gtfs_rt_nyct
-import lustre/element
 
 /// Text that contains styling and icons (e.g. route bullets).
-pub opaque type RichText {
+pub type RichText {
   // TODO: is there a better representation of this?
   /// Currently stores an HTML string.
-  RichText(String)
-}
-
-pub fn as_html(rich_text: RichText) -> element.Element(msg) {
-  let RichText(raw_html) = rich_text
-  element.unsafe_raw_html("", "div", [], raw_html)
+  RichText(raw_html: String)
 }
 
 pub fn from_translated_string(text: gtfs_rt_nyct.TranslatedString) -> RichText {
@@ -46,7 +40,7 @@ fn do_replace_bracketed_symbols(
   acc_html: String,
 ) -> RichText {
   case remaining_graphemes {
-    [] -> RichText(acc_html)
+    [] -> RichText(raw_html: acc_html)
     ["[", ..remaining_graphemes] -> {
       let #(remaining_graphemes, symbol_html) =
         consume_bracketed_symbol(remaining_graphemes, "")

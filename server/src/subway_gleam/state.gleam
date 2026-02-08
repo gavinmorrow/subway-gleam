@@ -1,5 +1,6 @@
 import gleam/otp/actor
-import subway_gleam/st
+
+import subway_gleam/gtfs/st
 import subway_gleam/state/gtfs_actor
 
 pub type State {

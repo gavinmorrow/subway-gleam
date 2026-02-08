@@ -1,18 +1,19 @@
 import gleam/list
-import gleam/set
 import gleam/time/duration
 import gleam/time/timestamp
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html
+
 import shared/component/route_bullet
+import subway_gleam/gtfs/st
 
 // TODO: remove all Elements from model
 pub type Model(msg) {
   Model(
     name: String,
     last_updated: timestamp.Timestamp,
-    transfers: set.Set(List(route_bullet.RouteBullet)),
+    transfers: List(Transfer),
     alert_summary: String,
     uptown: List(Element(msg)),
     downtown: List(Element(msg)),
@@ -29,10 +30,10 @@ pub fn view(model: Model(msg)) -> Element(msg) {
     downtown:,
   ) = model
   let transfers =
-    set.map(transfers, fn(routes) {
-      let routes = list.map(routes, route_bullet.route_bullet)
-
+    list.map(transfers, fn(transfer) {
+      let routes = list.map(transfer.routes, route_bullet.route_bullet)
       let st.StopId(id) = transfer.destination
+
       html.a(
         [attribute.class("bullet-group"), attribute.href("/stop/" <> id)],
         routes,
@@ -61,7 +62,5 @@ pub fn view(model: Model(msg)) -> Element(msg) {
 }
 
 pub type Transfer {
-  Transfer(
-    destination_id: String,
-  )
+  Transfer(destination: st.StopId, routes: List(route_bullet.RouteBullet))
 }

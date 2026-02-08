@@ -7,10 +7,11 @@ import gleam/string
 import lustre/attribute
 import lustre/element
 import lustre/element/html
-import subway_gleam/lustre_middleware.{Document, try_lustre_res}
-import subway_gleam/st
-import subway_gleam/state
 import wisp
+
+import subway_gleam/gtfs/st
+import subway_gleam/lustre_middleware.{Document, try_lustre_res}
+import subway_gleam/state
 
 pub fn line(req: wisp.Request, state: state.State, route_id: String) {
   use _req <- try_lustre_res(req)

@@ -1,6 +1,5 @@
 //// Work with the static GTFS data.
 
-import comp_flags
 import gleam/bit_array
 import gleam/bool
 import gleam/dict
@@ -20,8 +19,9 @@ import gleam/time/duration
 import gsv
 import simplifile
 
-import subway_gleam/internal/ffi
-import subway_gleam/internal/util
+import subway_gleam/gtfs/comp_flags
+import subway_gleam/gtfs/internal/decode_parse_str_field.{decode_parse_str_field}
+import subway_gleam/gtfs/internal/ffi
 
 pub type Feed {
   /// This file represents the "normal" subway schedule and does not include
@@ -256,7 +256,7 @@ fn stop_time_decoder() -> decode.Decoder(StopTime) {
   )
   use arrival_time <- decode.field(
     "arrival_time",
-    util.decode_parse_str_field(
+    decode_parse_str_field(
       named: "arrival_time",
       with: parse_time,
       default: duration.seconds(0),
@@ -264,7 +264,7 @@ fn stop_time_decoder() -> decode.Decoder(StopTime) {
   )
   use departure_time <- decode.field(
     "departure_time",
-    util.decode_parse_str_field(
+    decode_parse_str_field(
       named: "departure_time",
       with: parse_time,
       default: duration.seconds(0),
@@ -272,11 +272,7 @@ fn stop_time_decoder() -> decode.Decoder(StopTime) {
   )
   use stop_sequence <- decode.field(
     "stop_sequence",
-    util.decode_parse_str_field(
-      named: "stop_sequence",
-      with: int.parse,
-      default: 0,
-    ),
+    decode_parse_str_field(named: "stop_sequence", with: int.parse, default: 0),
   )
 
   StopTime(
@@ -307,20 +303,16 @@ fn stop_decoder() -> decode.Decoder(Stop(option.Option(Direction))) {
   use name <- decode.field("stop_name", decode.string)
   use lat <- decode.field(
     "stop_lat",
-    util.decode_parse_str_field(named: "lat", with: float.parse, default: 0.0),
+    decode_parse_str_field(named: "lat", with: float.parse, default: 0.0),
   )
   use lon <- decode.field(
     "stop_lon",
-    util.decode_parse_str_field(named: "lon", with: float.parse, default: 0.0),
+    decode_parse_str_field(named: "lon", with: float.parse, default: 0.0),
   )
   use location_type <- decode.optional_field(
     "location_type",
     option.None,
-    util.decode_parse_str_field(
-      named: "location_type",
-      with: int.parse,
-      default: 0,
-    )
+    decode_parse_str_field(named: "location_type", with: int.parse, default: 0)
       |> decode.map(option.Some),
   )
   use parent_station <- decode.optional_field(
@@ -420,6 +412,11 @@ pub type Route {
   Sf
 
   Si
+}
+
+pub type BulletShape {
+  Circle
+  Diamond
 }
 
 pub fn bullet_shape(for route: Route) -> BulletShape {
@@ -723,7 +720,7 @@ fn transfer_decoder() -> decode.Decoder(Transfer) {
   use #(destination, _) <- decode.field("to_stop_id", stop_id_decoder())
   use transfer_time <- decode.field(
     "min_transfer_time",
-    util.decode_parse_str_field(
+    decode_parse_str_field(
       named: "min_transfer_time",
       with: int.parse,
       default: 0,
@@ -757,7 +754,7 @@ fn route_data_decoder() -> decode.Decoder(RouteData) {
   use text_color <- decode.field("route_text_color", decode.string)
   use sort_order <- decode.field(
     "route_sort_order",
-    util.decode_parse_str_field(
+    decode_parse_str_field(
       named: "route_sort_order",
       with: int.parse,
       default: 0,

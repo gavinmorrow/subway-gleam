@@ -2,10 +2,12 @@ import lustre/attribute
 import lustre/element
 import lustre/element/html
 
+import subway_gleam/gtfs/st
+
 pub type RouteBullet {
   RouteBullet(
     text: String,
-    shape: BulletShape,
+    shape: st.BulletShape,
     color: String,
     text_color: String,
   )
@@ -34,14 +36,13 @@ pub fn route_bullet(bullet: RouteBullet) -> element.Element(msg) {
   )
 }
 
-pub type BulletShape {
-  Circle
-  Diamond
+pub fn from_route_data(data: st.RouteData) -> RouteBullet {
+  todo
 }
 
-fn bullet_shape_string(shape: BulletShape) -> String {
+fn bullet_shape_string(shape: st.BulletShape) -> String {
   case shape {
-    Circle -> "circle"
-    Diamond -> "diamond"
+    st.Circle -> "circle"
+    st.Diamond -> "diamond"
   }
 }

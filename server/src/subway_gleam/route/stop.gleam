@@ -13,16 +13,16 @@ import gleam/uri
 import lustre/attribute
 import lustre/element
 import lustre/element/html
+import shared/component/route_bullet
+import wisp
+
 import shared/route/stop
-import subway_gleam/component
+import subway_gleam/gtfs/rt
+import subway_gleam/gtfs/st
 import subway_gleam/internal/util
 import subway_gleam/lustre_middleware.{Document, try_lustre_res}
-import subway_gleam/rt
-import subway_gleam/rt/rich_text
-import subway_gleam/st
 import subway_gleam/state
 import subway_gleam/state/gtfs_actor
-import wisp
 
 pub fn stop(
   req: wisp.Request,
@@ -70,15 +70,11 @@ pub fn stop(
         })
         |> set.to_list
         |> list.sort(st.route_compare)
-        // TODO: also need to sort each group in sort order
-        |> list.map(component.route_bullet)
+        |> list.map(route_bullet.from_route_data)
 
-      let st.StopId(id) = transfer.destination
-      html.a(
-        [attribute.class("bullet-group"), attribute.href("/stop/" <> id)],
-        routes,
-      )
+      stop.Transfer(destination: transfer.destination, routes:)
     })
+    // TODO: also need to sort each group in sort order
     |> set.to_list
 
   let gtfs_actor.Data(current: gtfs, last_updated:) = state.fetch_gtfs(state)

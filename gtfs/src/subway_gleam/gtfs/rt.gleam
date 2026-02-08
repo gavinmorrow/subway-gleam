@@ -1,4 +1,3 @@
-import comp_flags
 import gleam/dict
 import gleam/http/request
 import gleam/httpc
@@ -12,11 +11,12 @@ import gleam/time/timestamp
 import gtfs_rt_nyct
 import protobin
 import simplifile
-import subway_gleam/internal/util
 
-import subway_gleam/rt/rich_text.{type RichText}
-import subway_gleam/rt/time_range.{type TimeRange}
-import subway_gleam/st
+import subway_gleam/gtfs/comp_flags
+import subway_gleam/gtfs/internal/unix_time_to_timestamp.{unix_time_to_timestamp}
+import subway_gleam/gtfs/rt/rich_text.{type RichText}
+import subway_gleam/gtfs/rt/time_range.{type TimeRange}
+import subway_gleam/gtfs/st
 
 // TODO: find a better name
 pub type Data {
@@ -232,10 +232,10 @@ pub fn analyze(raw: gtfs_rt_nyct.FeedMessage) -> Data {
               rich_text.from_translated_string,
             ),
             created: option.map(mercury_alert, fn(m) {
-              util.unix_time_to_timestamp(m.created_at)
+              unix_time_to_timestamp(m.created_at)
             }),
             updated: option.map(mercury_alert, fn(m) {
-              util.unix_time_to_timestamp(m.updated_at)
+              unix_time_to_timestamp(m.updated_at)
             }),
             alert_type: option.map(mercury_alert, fn(m) { m.alert_type }),
             station_alternatives: option.map(mercury_alert, fn(m) {
