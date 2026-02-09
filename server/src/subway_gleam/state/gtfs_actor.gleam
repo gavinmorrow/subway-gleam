@@ -4,8 +4,8 @@ import gleam/otp/actor
 import gleam/result
 import gleam/time/timestamp
 
+import shared/util
 import subway_gleam/gtfs/rt
-import subway_gleam/internal/util
 
 pub type Subject =
   process.Subject(Message)

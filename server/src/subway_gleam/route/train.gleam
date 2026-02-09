@@ -1,25 +1,24 @@
 import gleam/dict
-import gleam/int
 import gleam/list
 import gleam/option
 import gleam/pair
 import gleam/result
 import gleam/set
 import gleam/string
-import gleam/time/duration
 import gleam/time/timestamp
 import gleam/uri
 import lustre/attribute
-import lustre/element
 import lustre/element/html
-import subway_gleam/component
-import subway_gleam/internal/util
+import shared/component/route_bullet
+import shared/route/train
+import wisp
+
+import shared/util
+import subway_gleam/gtfs/rt
+import subway_gleam/gtfs/st
 import subway_gleam/lustre_middleware.{Body, Document, try_lustre_res}
-import subway_gleam/rt
-import subway_gleam/st
 import subway_gleam/state
 import subway_gleam/state/gtfs_actor
-import wisp
 
 pub fn train(
   req: wisp.Request,
@@ -74,14 +73,11 @@ pub fn train(
       }
     })
 
+  let model = train.Model(last_updated:, stops:)
   let body = [
-    html.p([], [
-      html.text(
-        "Last updated "
-        <> last_updated |> timestamp.to_rfc3339(duration.hours(-4)),
-      ),
+    html.div([attribute.id("app")], [
+      train.view(model),
     ]),
-    html.ol([attribute.class("stops-list")], stops),
   ]
 
   Ok(#(Body(body:), wisp.response(200)))
@@ -113,7 +109,7 @@ fn stop_li(
   train_id: rt.TrainId,
   highlighted_stop: Result(st.StopId, Nil),
   schedule: st.Schedule,
-) -> element.Element(msg) {
+) -> train.Stop {
   let stop_url = {
     let stop_id = stop.id |> st.stop_id_to_string(direction: option.None)
     let train_id =
@@ -142,20 +138,7 @@ fn stop_li(
     })
     |> list.map(st.route_data(for: _, in: schedule))
     |> list.sort(by: st.route_compare)
-    |> list.map(component.route_bullet)
+    |> list.map(route_bullet.from_route_data)
 
-  html.li([], [
-    html.a(
-      [
-        attribute.href(stop_url),
-        attribute.classes([#("highlight", is_highlighted)]),
-      ],
-      [
-        html.span([], [html.text(stop.name), ..transfers]),
-        html.span([], [
-          html.text(time |> util.min_from_now |> int.to_string <> "min"),
-        ]),
-      ],
-    ),
-  ])
+  train.Stop(name: stop.name, stop_url:, is_highlighted:, transfers:, time:)
 }

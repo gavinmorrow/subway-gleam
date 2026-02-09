@@ -1,11 +1,14 @@
+import gleam/int
 import gleam/list
+import gleam/result
 import gleam/time/duration
 import gleam/time/timestamp
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html
 
-import shared/component/route_bullet
+import shared/component/route_bullet.{type RouteBullet, route_bullet}
+import shared/util
 import subway_gleam/gtfs/st
 
 // TODO: remove all Elements from model
@@ -15,8 +18,8 @@ pub type Model(msg) {
     last_updated: timestamp.Timestamp,
     transfers: List(Transfer),
     alert_summary: String,
-    uptown: List(Element(msg)),
-    downtown: List(Element(msg)),
+    uptown: List(Arrival),
+    downtown: List(Arrival),
   )
 }
 
@@ -39,6 +42,8 @@ pub fn view(model: Model(msg)) -> Element(msg) {
         routes,
       )
     })
+  let uptown = list.map(uptown, arrival_li)
+  let downtown = list.map(downtown, arrival_li)
 
   html.div([], [
     html.h1([], [
@@ -63,4 +68,41 @@ pub fn view(model: Model(msg)) -> Element(msg) {
 
 pub type Transfer {
   Transfer(destination: st.StopId, routes: List(route_bullet.RouteBullet))
+}
+
+pub type Arrival {
+  Arrival(
+    train_url: String,
+    is_highlighted: Bool,
+    route: RouteBullet,
+    headsign: Result(String, Nil),
+    time: timestamp.Timestamp,
+  )
+}
+
+fn arrival_li(arrival: Arrival) -> Element(msg) {
+  let Arrival(train_url:, is_highlighted:, route:, headsign:, time:) = arrival
+  let headsign =
+    result.map(headsign, fn(headsign) { html.span([], [html.text(headsign)]) })
+
+  html.li([], [
+    html.a(
+      [
+        attribute.href(train_url),
+        attribute.classes([#("highlight", is_highlighted)]),
+      ],
+      [
+        route_bullet(route),
+        headsign |> result.unwrap(or: element.none()),
+        html.span([], [
+          html.text(
+            time
+            |> util.min_from_now
+            |> int.to_string
+            <> "min",
+          ),
+        ]),
+      ],
+    ),
+  ])
 }

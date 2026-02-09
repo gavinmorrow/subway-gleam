@@ -1,16 +1,16 @@
-import comp_flags
 import gleam/erlang/process
 import gleam/option
 import gleam/otp/actor
 import gleam/result
 import mist
 import repeatedly
-import subway_gleam/normalize_path_trailing_slash.{normalize_path_trailing_slash}
-import subway_gleam/schedule_sample
-import subway_gleam/st
 import wisp
 import wisp/wisp_mist
 
+import subway_gleam/gtfs/comp_flags
+import subway_gleam/gtfs/st
+import subway_gleam/gtfs/st/schedule_sample
+import subway_gleam/normalize_path_trailing_slash.{normalize_path_trailing_slash}
 import subway_gleam/route
 import subway_gleam/state
 import subway_gleam/state/gtfs_actor

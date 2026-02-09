@@ -7,19 +7,18 @@ import gleam/pair
 import gleam/result
 import gleam/set
 import gleam/string
-import gleam/time/duration
 import gleam/time/timestamp
 import gleam/uri
 import lustre/attribute
-import lustre/element
 import lustre/element/html
 import shared/component/route_bullet
+import shared/route/stop/alerts
 import wisp
 
 import shared/route/stop
+import shared/util
 import subway_gleam/gtfs/rt
 import subway_gleam/gtfs/st
-import subway_gleam/internal/util
 import subway_gleam/lustre_middleware.{Document, try_lustre_res}
 import subway_gleam/state
 import subway_gleam/state/gtfs_actor
@@ -213,108 +212,17 @@ pub fn alerts(
 
   let gtfs_actor.Data(current: gtfs, last_updated:) = state.fetch_gtfs(state)
 
-  let route_selections = {
-    let bullets =
-      all_routes
-      |> set.map(fn(route) {
-        let route_id = st.route_to_long_id(route)
-        let route = st.route_data(in: state.schedule, for: route)
-        html.a(
-          [attribute.class("bullet-group"), attribute.href("../" <> route_id)],
-          [component.route_bullet(route)],
-        )
-      })
-      |> set.to_list
-    html.aside([], [
-      html.a(
-        [
-          attribute.class("bullet-group"),
-          attribute.href("../all"),
-        ],
-        [html.text("All")],
-      ),
-      ..bullets
-    ])
-  }
-
   let alerts = filter_alerts(gtfs, routes, stop_id)
-  let alerts = list.map(alerts, alert_detail)
-  let alerts_list = case list.is_empty(alerts) {
-    True -> html.p([], [html.text("Woah...no alerts for this line!")])
-    False -> html.ul([attribute.class("alerts")], alerts)
-  }
+  let all_routes =
+    set.map(all_routes, with: st.route_data(in: state.schedule, for: _))
+
+  let model =
+    alerts.Model(stop_name: stop.name, last_updated:, all_routes:, alerts:)
 
   let head = [html.title([], "Trains at " <> stop.name)]
-  let body = [
-    html.h1([], [
-      html.text(stop.name),
-    ]),
-    html.aside([], [
-      html.text(
-        "Last updated "
-        <> { last_updated |> timestamp.to_rfc3339(duration.hours(-4)) },
-      ),
-    ]),
-    html.nav([], [
-      html.a([attribute.href("../../")], [html.text("Back to arrivals")]),
-    ]),
-    route_selections,
-    html.main([], [
-      alerts_list,
-    ]),
-  ]
+  let body = [html.div([attribute.id("app")], [alerts.view(model)])]
 
   Ok(#(Document(head:, body:), wisp.response(200)))
-}
-
-fn alert_detail(alert: rt.Alert) -> element.Element(msg) {
-  let rt.Alert(
-    id:,
-    active_periods: _,
-    targets: _,
-    header:,
-    description:,
-    created: _,
-    updated:,
-    alert_type:,
-    station_alternatives:,
-    display_before_active: _,
-    human_readable_active_period:,
-    clone_id:,
-  ) = alert
-
-  let alert_type = alert_type |> option.unwrap(or: "Alert") |> html.text
-
-  let header = rich_text.as_html(header)
-  let description =
-    description
-    |> option.map(rich_text.as_html)
-    |> option.unwrap(or: element.none())
-
-  let human_readable_active_period =
-    human_readable_active_period |> option.map(rich_text.as_html)
-  let last_updated =
-    option.map(updated, fn(updated) {
-      let str = updated |> util.min_from_now |> int.negate |> int.to_string
-      html.text("Last updated: " <> str <> "min ago")
-    })
-  let active_period_or_last_updated =
-    option.or(human_readable_active_period, last_updated)
-    |> option.map(fn(elem) {
-      html.div([attribute.class("alert-last-updated")], [elem])
-    })
-    |> option.unwrap(or: element.none())
-
-  let alert_id = html.p([attribute.class("alert-id")], [html.text(id)])
-
-  html.details([attribute.class("alert")], [
-    html.summary([], [alert_type]),
-    header,
-    active_period_or_last_updated,
-    html.hr([]),
-    description,
-    alert_id,
-  ])
 }
 
 fn error_invalid_stop(
@@ -349,25 +257,22 @@ fn arrival_li(
   schedule: st.Schedule,
   gtfs: rt.Data,
   highlighted_train: Result(rt.TrainId, Nil),
-) -> element.Element(msg) {
+) -> stop.Arrival {
   let rt.TrainStopping(trip:, time:, stop_id: _, direction: _) = update
 
   let headsign = {
     use shape_id <- result.try(st.parse_shape_id(from: trip.trip_id))
-    let headsign =
-      schedule.trips.headsigns
-      |> dict.get(shape_id)
-      |> result.lazy_or(fn() {
-        dict.get(gtfs.final_stops, shape_id)
-        |> result.map(pair.map_second(_, option.Some))
-        |> result.try(dict.get(schedule.stops, _))
-        |> result.map(fn(stop) { stop.name })
-        // TODO: maybe don't want to always have a value?
-        |> result.unwrap(or: "<Unknown stop>")
-        |> Ok
-      })
-    use headsign <- result.map(headsign)
-    html.span([], [html.text(headsign)])
+    schedule.trips.headsigns
+    |> dict.get(shape_id)
+    |> result.lazy_or(fn() {
+      dict.get(gtfs.final_stops, shape_id)
+      |> result.map(pair.map_second(_, option.Some))
+      |> result.try(dict.get(schedule.stops, _))
+      |> result.map(fn(stop) { stop.name })
+      // TODO: maybe don't want to always have a value?
+      |> result.unwrap(or: "<Unknown stop>")
+      |> Ok
+    })
   }
 
   let train_id_percent_encode =
@@ -399,26 +304,8 @@ fn arrival_li(
 
   // TODO: what to do here?? try to get rid of assert.
   let assert Ok(route_id) = st.parse_route(trip.route_id)
-  let route = schedule |> st.route_data(for: route_id)
+  let route =
+    schedule |> st.route_data(for: route_id) |> route_bullet.from_route_data
 
-  html.li([], [
-    html.a(
-      [
-        attribute.href(train_url),
-        attribute.classes([#("highlight", is_highlighted)]),
-      ],
-      [
-        component.route_bullet(route),
-        headsign |> result.unwrap(or: element.none()),
-        html.span([], [
-          html.text(
-            time
-            |> util.min_from_now
-            |> int.to_string
-            <> "min",
-          ),
-        ]),
-      ],
-    ),
-  ])
+  stop.Arrival(train_url:, is_highlighted:, route:, headsign:, time:)
 }

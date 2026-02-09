@@ -1,3 +1,4 @@
+import gleam/string
 import lustre/attribute
 import lustre/element
 import lustre/element/html
@@ -37,7 +38,16 @@ pub fn route_bullet(bullet: RouteBullet) -> element.Element(msg) {
 }
 
 pub fn from_route_data(data: st.RouteData) -> RouteBullet {
-  todo
+  // TODO: make this less hacky. maybe pass around separate "diamond express" property?
+  // TODO: this fails on the SIR, and would fail if the IBX ever becomes a thing
+  let assert Ok(text) = string.first(data.short_name)
+
+  RouteBullet(
+    text:,
+    shape: st.bullet_shape(data.id),
+    color: data.color,
+    text_color: data.text_color,
+  )
 }
 
 fn bullet_shape_string(shape: st.BulletShape) -> String {
