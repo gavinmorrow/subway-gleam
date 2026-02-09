@@ -5,6 +5,7 @@ import gleam/result
 import gleam/time/timestamp
 
 import shared/util
+import subway_gleam/gtfs/fetch_rt
 import subway_gleam/gtfs/rt
 
 pub type Subject =
@@ -67,7 +68,7 @@ fn fetch_all_rt_feeds() -> Result(Data, rt.FetchGtfsError) {
       from: rt.empty_data(),
       with: fn(acc, feed) {
         use rt <- result.map(
-          rt.fetch_gtfs(feed:)
+          fetch_rt.fetch_gtfs(feed:)
           |> result.map(rt.analyze),
         )
         acc |> rt.data_merge(from: rt)

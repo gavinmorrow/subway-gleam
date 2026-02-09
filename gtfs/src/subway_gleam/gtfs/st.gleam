@@ -6,7 +6,6 @@ import gleam/dict
 import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/float
-import gleam/http/request
 import gleam/httpc
 import gleam/int
 import gleam/list
@@ -17,9 +16,7 @@ import gleam/set
 import gleam/string
 import gleam/time/duration
 import gsv
-import simplifile
 
-import subway_gleam/gtfs/comp_flags
 import subway_gleam/gtfs/internal/decode_parse_str_field.{decode_parse_str_field}
 import subway_gleam/gtfs/internal/ffi
 
@@ -166,30 +163,6 @@ fn parse_stop_times(
 
 fn empty_service(route: Route) -> Service {
   Service(route:, stops: set.new())
-}
-
-pub fn fetch_bin(feed: Feed) -> Result(BitArray, httpc.HttpError) {
-  let req: request.Request(BitArray) =
-    request.new()
-    |> request.set_host("rrgtfsfeeds.s3.amazonaws.com")
-    |> request.set_path(feed_path(feed))
-    |> request.set_body(<<>>)
-
-  use res <- result.try(httpc.send_bits(req))
-
-  let assert Ok(Nil) = case comp_flags.save_fetched_st {
-    True -> simplifile.write_bits(res.body, to: "gtfs_subway.zip")
-    False -> Ok(Nil)
-  }
-
-  res.body |> Ok
-}
-
-fn feed_path(feed: Feed) -> String {
-  case feed {
-    Regular -> "gtfs_subway.zip"
-    Supplemented -> "gtfs_supplemented.zip"
-  }
 }
 
 pub type Service {

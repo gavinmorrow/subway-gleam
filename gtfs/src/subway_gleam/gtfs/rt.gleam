@@ -1,18 +1,14 @@
 import gleam/dict
-import gleam/http/request
 import gleam/httpc
 import gleam/list
 import gleam/option
 import gleam/pair
 import gleam/result
-import gleam/string
 import gleam/time/duration
 import gleam/time/timestamp
 import gtfs_rt_nyct
 import protobin
-import simplifile
 
-import subway_gleam/gtfs/comp_flags
 import subway_gleam/gtfs/internal/unix_time_to_timestamp.{unix_time_to_timestamp}
 import subway_gleam/gtfs/rt/rich_text.{type RichText}
 import subway_gleam/gtfs/rt/time_range.{type TimeRange}
@@ -144,68 +140,6 @@ pub const all_feeds = [
 pub type FetchGtfsError {
   HttpError(httpc.HttpError)
   ParseError(protobin.ParseError)
-}
-
-fn gtfs_rt_feed_filename(feed: GtfsRtFeed) -> String {
-  case feed {
-    ACESr -> "nyct_gtfs-ace"
-    BDFMSf -> "nyct_gtfs-bdfm"
-    G -> "nyct_gtfs-g"
-    JZ -> "nyct_gtfs-jz"
-    L -> "nyct_gtfs-l"
-    NQRW -> "nyct_gtfs-nqrw"
-    S1234567 -> "nyct_gtfs"
-    Si -> "nyct_gtfs-si"
-    Alerts -> "camsys_subway-alerts"
-  }
-}
-
-fn gtfs_rt_feed_path(feed: GtfsRtFeed) -> String {
-  "Dataservice/mtagtfsfeeds/"
-  <> gtfs_rt_feed_filename(feed) |> string.replace(each: "_", with: "%2F")
-}
-
-fn fetch_gtfs_rt_bin(feed: GtfsRtFeed) -> Result(BitArray, httpc.HttpError) {
-  case comp_flags.use_local_rt {
-    True -> {
-      let name = gtfs_rt_feed_filename(feed)
-      let path = "../gtfs_rt_samples/" <> name
-      let assert Ok(bits) = simplifile.read_bits(from: path)
-      Ok(bits)
-    }
-    False -> {
-      let req: request.Request(BitArray) =
-        request.new()
-        |> request.set_host("api-endpoint.mta.info")
-        |> request.set_path(gtfs_rt_feed_path(feed))
-        |> request.set_body(<<>>)
-
-      use res <- result.try(httpc.send_bits(req))
-      res.body |> Ok
-    }
-  }
-}
-
-pub fn fetch_gtfs(
-  feed feed: GtfsRtFeed,
-) -> Result(gtfs_rt_nyct.FeedMessage, FetchGtfsError) {
-  use bits <- result.try(fetch_gtfs_rt_bin(feed) |> result.map_error(HttpError))
-
-  let assert Ok(Nil) = case comp_flags.save_fetched_rt {
-    True -> {
-      let filename = gtfs_rt_feed_filename(feed)
-      simplifile.write_bits(bits, to: "../gtfs_rt_samples/" <> filename)
-    }
-    False -> Ok(Nil)
-  }
-
-  protobin.parse_with_config(
-    from: bits,
-    using: gtfs_rt_nyct.feed_message_decoder(),
-    config: protobin.Config(ignore_groups: True),
-  )
-  |> result.map(fn(parsed) { parsed.value })
-  |> result.map_error(ParseError)
 }
 
 pub fn analyze(raw: gtfs_rt_nyct.FeedMessage) -> Data {

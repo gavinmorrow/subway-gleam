@@ -8,6 +8,7 @@ import wisp
 import wisp/wisp_mist
 
 import subway_gleam/gtfs/comp_flags
+import subway_gleam/gtfs/fetch_st
 import subway_gleam/gtfs/st
 import subway_gleam/gtfs/st/schedule_sample
 import subway_gleam/normalize_path_trailing_slash.{normalize_path_trailing_slash}
@@ -21,7 +22,7 @@ pub fn main() -> Nil {
     case comp_flags.use_local_st {
       True -> schedule_sample.schedule()
       False ->
-        st.fetch_bin(st.Regular)
+        fetch_st.fetch_bin(st.Regular)
         |> result.map_error(st.HttpError)
         |> result.try(st.parse)
     }

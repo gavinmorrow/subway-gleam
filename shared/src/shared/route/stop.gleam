@@ -1,18 +1,22 @@
+import gleam/dynamic/decode
 import gleam/int
+import gleam/json
 import gleam/list
+import gleam/option
 import gleam/result
 import gleam/time/duration
 import gleam/time/timestamp
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html
+import shared/util/stop_id_json
+import shared/util/timestamp_json
 
 import shared/component/route_bullet.{type RouteBullet, route_bullet}
 import shared/util
 import subway_gleam/gtfs/st
 
-// TODO: remove all Elements from model
-pub type Model(msg) {
+pub type Model {
   Model(
     name: String,
     last_updated: timestamp.Timestamp,
@@ -23,7 +27,7 @@ pub type Model(msg) {
   )
 }
 
-pub fn view(model: Model(msg)) -> Element(msg) {
+pub fn view(model: Model) -> Element(msg) {
   let Model(
     name:,
     last_updated:,
@@ -66,8 +70,62 @@ pub fn view(model: Model(msg)) -> Element(msg) {
   ])
 }
 
+pub fn model_decoder() -> decode.Decoder(Model) {
+  use name <- decode.field("name", decode.string)
+  use last_updated <- decode.field("last_updated", timestamp_json.decoder())
+  use transfers <- decode.field("transfers", decode.list(transfer_decoder()))
+  use alert_summary <- decode.field("alert_summary", decode.string)
+  use uptown <- decode.field("uptown", decode.list(arrival_decoder()))
+  use downtown <- decode.field("downtown", decode.list(arrival_decoder()))
+
+  decode.success(Model(
+    name:,
+    last_updated:,
+    transfers:,
+    alert_summary:,
+    uptown:,
+    downtown:,
+  ))
+}
+
+pub fn model_to_json(model: Model) -> json.Json {
+  let Model(
+    name:,
+    last_updated:,
+    transfers:,
+    alert_summary:,
+    uptown:,
+    downtown:,
+  ) = model
+
+  json.object([
+    #("name", json.string(name)),
+    #("last_updated", timestamp_json.to_json(last_updated)),
+    #("transfers", json.array(transfers, transfer_to_json)),
+    #("alert_summary", json.string(alert_summary)),
+    #("uptown", json.array(uptown, arrival_to_json)),
+    #("downtown", json.array(downtown, arrival_to_json)),
+  ])
+}
+
 pub type Transfer {
   Transfer(destination: st.StopId, routes: List(route_bullet.RouteBullet))
+}
+
+fn transfer_decoder() -> decode.Decoder(Transfer) {
+  use destination <- decode.field("destination", stop_id_json.decoder())
+  use routes <- decode.field("routes", decode.list(route_bullet.decoder()))
+
+  decode.success(Transfer(destination:, routes:))
+}
+
+fn transfer_to_json(transfer: Transfer) -> json.Json {
+  let Transfer(destination:, routes:) = transfer
+
+  json.object([
+    #("destination", stop_id_json.to_json(destination)),
+    #("routes", json.array(routes, route_bullet.to_json)),
+  ])
 }
 
 pub type Arrival {
@@ -78,6 +136,31 @@ pub type Arrival {
     headsign: Result(String, Nil),
     time: timestamp.Timestamp,
   )
+}
+
+fn arrival_decoder() -> decode.Decoder(Arrival) {
+  use train_url <- decode.field("train_url", decode.string)
+  use is_highlighted <- decode.field("is_highlighted", decode.bool)
+  use route <- decode.field("route", route_bullet.decoder())
+  use headsign <- decode.field(
+    "headsign",
+    decode.optional(decode.string) |> decode.map(option.to_result(_, Nil)),
+  )
+  use time <- decode.field("time", timestamp_json.decoder())
+
+  decode.success(Arrival(train_url:, is_highlighted:, route:, headsign:, time:))
+}
+
+fn arrival_to_json(arrival: Arrival) -> json.Json {
+  let Arrival(train_url:, is_highlighted:, route:, headsign:, time:) = arrival
+
+  json.object([
+    #("train_url", json.string(train_url)),
+    #("is_highlighted", json.bool(is_highlighted)),
+    #("route", route_bullet.to_json(route)),
+    #("headsign", json.nullable(option.from_result(headsign), of: json.string)),
+    #("time", timestamp_json.to_json(time)),
+  ])
 }
 
 fn arrival_li(arrival: Arrival) -> Element(msg) {

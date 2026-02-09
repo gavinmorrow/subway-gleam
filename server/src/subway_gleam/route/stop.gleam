@@ -13,6 +13,7 @@ import lustre/attribute
 import lustre/element/html
 import shared/component/route_bullet
 import shared/route/stop/alerts
+import subway_gleam/hydration_scripts.{hydration_scripts}
 import wisp
 
 import shared/route/stop
@@ -122,7 +123,10 @@ pub fn stop(
       downtown:,
     )
 
-  let head = [html.title([], "Trains at " <> stop.name)]
+  let head = [
+    html.title([], "Trains at " <> stop.name),
+    hydration_scripts("stop", stop.model_to_json(model)),
+  ]
   let body = [
     html.div([attribute.id("app")], [
       stop.view(model),

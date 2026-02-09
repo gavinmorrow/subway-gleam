@@ -1,3 +1,5 @@
+import gleam/dynamic/decode
+import gleam/json
 import gleam/string
 import lustre/attribute
 import lustre/element
@@ -50,9 +52,37 @@ pub fn from_route_data(data: st.RouteData) -> RouteBullet {
   )
 }
 
+fn bullet_shape_decoder() -> decode.Decoder(st.BulletShape) {
+  use shape <- decode.then(decode.string)
+  case shape {
+    "circle" -> decode.success(st.Circle)
+    "diamond" -> decode.success(st.Diamond)
+    _ -> decode.failure(st.Circle, expected: "BulletShape")
+  }
+}
+
 fn bullet_shape_string(shape: st.BulletShape) -> String {
   case shape {
     st.Circle -> "circle"
     st.Diamond -> "diamond"
   }
+}
+
+pub fn decoder() -> decode.Decoder(RouteBullet) {
+  use text <- decode.field("text", decode.string)
+  use shape <- decode.field("shape", bullet_shape_decoder())
+  use color <- decode.field("color", decode.string)
+  use text_color <- decode.field("text_color", decode.string)
+  decode.success(RouteBullet(text:, shape:, color:, text_color:))
+}
+
+pub fn to_json(bullet: RouteBullet) -> json.Json {
+  let RouteBullet(text:, shape:, color:, text_color:) = bullet
+
+  json.object([
+    #("text", json.string(text)),
+    #("shape", json.string(bullet_shape_string(shape))),
+    #("color", json.string(color)),
+    #("text_color", json.string(text_color)),
+  ])
 }
