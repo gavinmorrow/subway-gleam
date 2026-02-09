@@ -86,10 +86,10 @@ fn alert_detail(alert: rt.Alert) -> element.Element(msg) {
     created: _,
     updated:,
     alert_type:,
-    station_alternatives:,
+    station_alternatives: _,
     display_before_active: _,
     human_readable_active_period:,
-    clone_id:,
+    clone_id: _,
   ) = alert
 
   let alert_type = alert_type |> option.unwrap(or: "Alert") |> html.text
