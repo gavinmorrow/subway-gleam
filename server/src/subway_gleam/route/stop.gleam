@@ -85,8 +85,11 @@ pub fn stop(
     |> list.map(fn(alert) { option.unwrap(alert.alert_type, or: "Alert") })
     |> list.unique
     |> string.join(with: ", ")
-  let num_alerts = list.length(alerts) |> int.to_string
-  let alert_summary = num_alerts <> " Alerts: " <> alert_summary
+  let alert_summary = case list.length(alerts) {
+    0 -> "0 Alerts"
+    1 -> "1 Alert: " <> alert_summary
+    num -> int.to_string(num) <> " Alerts: " <> alert_summary
+  }
 
   let #(uptown, downtown) =
     gtfs.arrivals
