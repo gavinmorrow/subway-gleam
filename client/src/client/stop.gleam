@@ -41,5 +41,8 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     )
     EventSource(lustre_event_source.Error) ->
       todo as "handle event source error"
+    EventSource(lustre_event_source.NoEventSourceClient) ->
+      // could also handle as normal error
+      panic as "web target should always have EventSource"
   }
 }

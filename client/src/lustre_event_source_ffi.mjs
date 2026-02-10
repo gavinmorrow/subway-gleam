@@ -3,8 +3,9 @@ export const init = (
   /** @type {(data: string) => void} */ on_data,
   /** @type {(eventSource: EventSource) => void} */ on_open,
   /** @type {() => void} */ on_error,
+  /** @type {() => void} */ on_no_client,
 ) => {
-  if (typeof EventSource == undefined) return on_error();
+  if (typeof EventSource == undefined) return on_no_client();
 
   const eventSource = new EventSource(path);
   // TODO: handle data types other than string

@@ -21,6 +21,7 @@ pub type Message {
   // TODO: is it possible to handle specific errors?
   //       is there any error data available?
   Error
+  NoEventSourceClient
 }
 
 pub fn init(path: String, to_msg: fn(Message) -> msg) -> Effect(msg) {
@@ -30,24 +31,31 @@ pub fn init(path: String, to_msg: fn(Message) -> msg) -> Effect(msg) {
       on_data: fn(msg) { dispatch(Data(msg) |> to_msg) },
       on_open: fn(event_source) { dispatch(OnOpen(event_source) |> to_msg) },
       on_error: fn() { dispatch(Error |> to_msg) },
+      on_no_client: fn() { dispatch(NoEventSourceClient |> to_msg) },
     )
   })
 }
 
 @external(javascript, "./lustre_event_source_ffi.mjs", "init")
 fn do_init(
-  path path: String,
-  on_data on_data: fn(String) -> Nil,
-  on_open on_open: fn(EventSource) -> Nil,
-  on_error on_error: fn() -> Nil,
-) -> Nil
+  path _: String,
+  on_data _: fn(String) -> Nil,
+  on_open _: fn(EventSource) -> Nil,
+  on_error _: fn() -> Nil,
+  on_no_client on_no_client: fn() -> Nil,
+) -> Nil {
+  on_no_client()
+}
 
 pub fn close(event_source: EventSource) -> Effect(msg) {
-  effect.from(fn(_dispatch) { do_close(event_source) })
+  use _dispatch <- effect.from
+  do_close(event_source)
 }
 
 @external(javascript, "./lustre_event_source_ffi.mjs", "close")
-fn do_close(event_source: EventSource) -> Nil
+fn do_close(_event_source: EventSource) -> Nil {
+  Nil
+}
 
 pub fn ready_state(event_source: EventSource) -> ReadyState {
   case ready_state_int(event_source) {
@@ -59,4 +67,7 @@ pub fn ready_state(event_source: EventSource) -> ReadyState {
 }
 
 @external(javascript, "./lustre_event_source_ffi.mjs", "readyState")
-fn ready_state_int(event_source: EventSource) -> Int
+fn ready_state_int(_event_source: EventSource) -> Int {
+  // Default to closed when the target doesn't support event sources
+  2
+}
