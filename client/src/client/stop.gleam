@@ -2,8 +2,10 @@ import gleam/json
 import gleam/result
 import lustre
 import lustre/effect.{type Effect}
+import lustre_event_source
 import plinth/browser/document
 import plinth/browser/element
+
 import shared/route/stop.{type Model, view}
 
 pub fn main() -> Result(lustre.Runtime(Msg), lustre.Error) {
@@ -17,14 +19,27 @@ pub fn main() -> Result(lustre.Runtime(Msg), lustre.Error) {
   lustre.start(app, onto: "#app", with: hydrated_model)
 }
 
-pub type Msg
+pub type Msg {
+  EventSource(lustre_event_source.Message)
+}
 
 fn init(flags: Model) -> #(Model, Effect(Msg)) {
-  #(flags, effect.none())
+  #(flags, lustre_event_source.init("./model_stream", EventSource))
 }
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    _ -> #(model, effect.none())
+    EventSource(lustre_event_source.Data(data)) -> {
+      case json.parse(from: data, using: stop.model_decoder()) {
+        Ok(new_model) -> #(new_model, effect.none())
+        Error(_) -> todo as "handle model decode error"
+      }
+    }
+    EventSource(lustre_event_source.OnOpen(_event_source)) -> #(
+      model,
+      effect.none(),
+    )
+    EventSource(lustre_event_source.Error) ->
+      todo as "handle event source error"
   }
 }

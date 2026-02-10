@@ -1,4 +1,7 @@
 import gleam/erlang/process
+import gleam/http/request
+import gleam/http/response
+import gleam/json
 import gleam/option
 import gleam/otp/actor
 import gleam/result
@@ -7,12 +10,14 @@ import repeatedly
 import wisp
 import wisp/wisp_mist
 
+import shared/route/stop as shared_stop
 import subway_gleam/gtfs/comp_flags
 import subway_gleam/gtfs/fetch_st
 import subway_gleam/gtfs/st
 import subway_gleam/gtfs/st/schedule_sample
 import subway_gleam/normalize_path_trailing_slash.{normalize_path_trailing_slash}
 import subway_gleam/route
+import subway_gleam/route/stop
 import subway_gleam/state
 import subway_gleam/state/gtfs_actor
 
@@ -39,12 +44,60 @@ pub fn main() -> Nil {
   let secret_key_base = wisp.random_string(64)
 
   let assert Ok(_) =
-    wisp_mist.handler(handler(state, _), secret_key_base)
+    mist_handler(_, state, secret_key_base)
     |> mist.new
     |> mist.port(8000)
     |> mist.start
 
   process.sleep_forever()
+}
+
+// This is done b/c wisp doesn't support some features (e.g. websockets,
+// server-sent events). So for routes that use the features wisp does support,
+// they go in the wisp handler. Otherwise, they go here.
+fn mist_handler(
+  req: request.Request(mist.Connection),
+  state: state.State,
+  secret_key_base: String,
+) -> response.Response(mist.ResponseData) {
+  case request.path_segments(req) {
+    ["stop", stop_id, "model_stream"] ->
+      mist.server_sent_events(
+        request: req,
+        initial_response: response.new(200),
+        init: fn(self) {
+          process.send(state.gtfs_actor.data, gtfs_actor.SubscribeWatcher(self))
+          Ok(actor.initialised(self))
+        },
+        loop: fn(
+          self: process.Subject(Nil),
+          _msg: Nil,
+          conn: mist.SSEConnection,
+        ) -> actor.Next(process.Subject(Nil), Nil) {
+          let model =
+            stop.model(state, stop_id, req.query)
+            |> result.replace_error(Nil)
+            |> result.map(shared_stop.model_to_json)
+            |> result.map(json.to_string_tree)
+
+          let event = model |> result.map(mist.event)
+          case result.try(event, mist.send_event(conn, _)) {
+            Ok(Nil) -> actor.continue(self)
+            Error(Nil) -> {
+              process.send(
+                state.gtfs_actor.data,
+                gtfs_actor.UnsubscribeWatcher(self),
+              )
+              actor.stop()
+            }
+          }
+        },
+      )
+    _ -> {
+      let handler = wisp_mist.handler(handler(state, _), secret_key_base)
+      handler(req)
+    }
+  }
 }
 
 fn handler(state: state.State, req: wisp.Request) -> wisp.Response {

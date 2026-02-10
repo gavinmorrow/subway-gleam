@@ -11,15 +11,15 @@ import gleam/time/timestamp
 import gleam/uri
 import lustre/attribute
 import lustre/element/html
-import shared/component/route_bullet
-import shared/route/stop/alerts
-import subway_gleam/hydration_scripts.{hydration_scripts}
 import wisp
 
+import shared/component/route_bullet
 import shared/route/stop
+import shared/route/stop/alerts
 import shared/util
 import subway_gleam/gtfs/rt
 import subway_gleam/gtfs/st
+import subway_gleam/hydration_scripts.{hydration_scripts}
 import subway_gleam/lustre_middleware.{Document, try_lustre_res}
 import subway_gleam/state
 import subway_gleam/state/gtfs_actor
@@ -31,7 +31,7 @@ pub fn stop(
 ) -> wisp.Response {
   use req <- try_lustre_res(req)
 
-  case model(req, state, stop_id) {
+  case model(state, stop_id, req.query) {
     Ok(model) -> {
       let head = [
         html.title([], "Trains at " <> model.name),
@@ -50,14 +50,14 @@ pub fn stop(
   }
 }
 
-fn model(
-  req: wisp.Request,
+pub fn model(
   state: state.State,
   stop_id: String,
+  query: option.Option(String),
 ) -> Result(stop.Model, Error) {
   // TODO: make this a function?
   let highlighted_train =
-    req.query
+    query
     |> option.to_result(Nil)
     |> result.try(uri.parse_query)
     |> result.unwrap(or: [])

@@ -2,6 +2,7 @@ import gleam/erlang/process
 import gleam/list
 import gleam/otp/actor
 import gleam/result
+import gleam/set
 import gleam/time/timestamp
 
 import shared/util
@@ -12,7 +13,7 @@ pub type Subject =
   process.Subject(Message)
 
 pub type State {
-  State(self: Subject, data: Data)
+  State(self: Subject, data: Data, watchers: set.Set(process.Subject(Nil)))
 }
 
 pub type Data {
@@ -23,6 +24,8 @@ pub type Message {
   Get(process.Subject(Data))
   Update
   SetData(Result(Data, rt.FetchGtfsError))
+  SubscribeWatcher(process.Subject(Nil))
+  UnsubscribeWatcher(process.Subject(Nil))
 }
 
 pub fn gtfs_actor() -> Result(actor.Started(Subject), actor.StartError) {
@@ -31,7 +34,7 @@ pub fn gtfs_actor() -> Result(actor.Started(Subject), actor.StartError) {
       fetch_all_rt_feeds()
       |> result.replace_error("fetch gtfs_rt error"),
     )
-    let state = State(self:, data:)
+    let state = State(self:, data:, watchers: set.new())
 
     actor.initialised(state) |> actor.returning(self) |> Ok
   })
@@ -45,6 +48,7 @@ fn handle_message(state: State, msg: Message) -> actor.Next(State, Message) {
       actor.send(reply, state.data)
       actor.continue(state)
     }
+
     Update -> {
       process.spawn(fn() {
         fetch_all_rt_feeds()
@@ -54,8 +58,21 @@ fn handle_message(state: State, msg: Message) -> actor.Next(State, Message) {
 
       actor.continue(state)
     }
+
     SetData(Error(_)) -> actor.continue(state)
-    SetData(Ok(data)) -> actor.continue(State(..state, data:))
+    SetData(Ok(data)) -> {
+      let Nil = set.each(state.watchers, process.send(_, Nil))
+      actor.continue(State(..state, data:))
+    }
+
+    SubscribeWatcher(subj) ->
+      actor.continue(
+        State(..state, watchers: set.insert(subj, into: state.watchers)),
+      )
+    UnsubscribeWatcher(subj) ->
+      actor.continue(
+        State(..state, watchers: set.delete(subj, from: state.watchers)),
+      )
   }
 }
 
