@@ -9,11 +9,12 @@ import gleam/time/timestamp
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html
-import shared/util/stop_id_json
-import shared/util/timestamp_json
+import lustre_event_source
 
 import shared/component/route_bullet.{type RouteBullet, route_bullet}
 import shared/util
+import shared/util/stop_id_json
+import shared/util/timestamp_json
 import subway_gleam/gtfs/st
 
 pub type Model {
@@ -24,6 +25,7 @@ pub type Model {
     alert_summary: String,
     uptown: List(Arrival),
     downtown: List(Arrival),
+    event_source: LiveStatus,
   )
 }
 
@@ -35,7 +37,9 @@ pub fn view(model: Model) -> Element(msg) {
     alert_summary:,
     uptown:,
     downtown:,
+    event_source:,
   ) = model
+
   let transfers =
     list.map(transfers, fn(transfer) {
       let routes = list.map(transfer.routes, route_bullet.route_bullet)
@@ -49,6 +53,12 @@ pub fn view(model: Model) -> Element(msg) {
   let uptown = list.map(uptown, arrival_li)
   let downtown = list.map(downtown, arrival_li)
 
+  let live_status = case event_source {
+    Connecting(_) -> element.text("Conecting...")
+    Live(_) -> element.text("Live!")
+    Unavailable -> element.text("Live not available.")
+  }
+
   html.div([], [
     html.h1([], [
       html.text(name),
@@ -58,6 +68,8 @@ pub fn view(model: Model) -> Element(msg) {
         "Last updated "
         <> { last_updated |> timestamp.to_rfc3339(duration.hours(-4)) },
       ),
+      html.br([]),
+      live_status,
     ]),
     html.aside([], [html.text("Transfer to:"), ..transfers]),
     html.aside([], [
@@ -85,6 +97,7 @@ pub fn model_decoder() -> decode.Decoder(Model) {
     alert_summary:,
     uptown:,
     downtown:,
+    event_source: Unavailable,
   ))
 }
 
@@ -96,6 +109,8 @@ pub fn model_to_json(model: Model) -> json.Json {
     alert_summary:,
     uptown:,
     downtown:,
+    // Can't encode an EventSource
+    event_source: _,
   ) = model
 
   json.object([
@@ -188,4 +203,21 @@ fn arrival_li(arrival: Arrival) -> Element(msg) {
       ],
     ),
   ])
+}
+
+pub type LiveStatus {
+  Connecting(lustre_event_source.EventSource)
+  Live(lustre_event_source.EventSource)
+  Unavailable
+}
+
+pub fn live_status(
+  for event_source: lustre_event_source.EventSource,
+) -> LiveStatus {
+  let ready_state = lustre_event_source.ready_state(event_source)
+  case ready_state {
+    lustre_event_source.Connecting -> Connecting(event_source)
+    lustre_event_source.Open -> Live(event_source)
+    lustre_event_source.Closed -> Unavailable
+  }
 }

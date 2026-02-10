@@ -6,7 +6,7 @@ import lustre_event_source
 import plinth/browser/document
 import plinth/browser/element
 
-import shared/route/stop.{type Model, view}
+import shared/route/stop.{type Model, Model, view}
 
 pub fn main() -> Result(lustre.Runtime(Msg), lustre.Error) {
   // TODO: handle errors: model not found, and invalid JSON
@@ -31,18 +31,46 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     EventSource(lustre_event_source.Data(data)) -> {
       case json.parse(from: data, using: stop.model_decoder()) {
-        Ok(new_model) -> #(new_model, effect.none())
+        Ok(Model(
+          name:,
+          last_updated:,
+          transfers:,
+          alert_summary:,
+          uptown:,
+          downtown:,
+          event_source: _,
+        )) -> #(
+          Model(
+            ..model,
+            name:,
+            last_updated:,
+            transfers:,
+            alert_summary:,
+            uptown:,
+            downtown:,
+          ),
+          effect.none(),
+        )
         Error(_) -> todo as "handle model decode error"
       }
     }
-    EventSource(lustre_event_source.OnOpen(_event_source)) -> #(
-      model,
+    EventSource(lustre_event_source.OnOpen(event_source)) -> {
+      #(
+        Model(..model, event_source: stop.live_status(event_source)),
+        effect.none(),
+      )
+    }
+    EventSource(lustre_event_source.Error) -> {
+      let live_status = case model.event_source {
+        stop.Connecting(event_source) -> stop.live_status(event_source)
+        stop.Live(event_source) -> stop.live_status(event_source)
+        stop.Unavailable -> stop.Unavailable
+      }
+      #(Model(..model, event_source: live_status), effect.none())
+    }
+    EventSource(lustre_event_source.NoEventSourceClient) -> #(
+      Model(..model, event_source: stop.Unavailable),
       effect.none(),
     )
-    EventSource(lustre_event_source.Error) ->
-      todo as "handle event source error"
-    EventSource(lustre_event_source.NoEventSourceClient) ->
-      // could also handle as normal error
-      panic as "web target should always have EventSource"
   }
 }

@@ -147,6 +147,7 @@ pub fn model(
     alert_summary:,
     uptown:,
     downtown:,
+    event_source: stop.Unavailable,
   ))
 }
 
