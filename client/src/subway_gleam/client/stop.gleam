@@ -54,7 +54,8 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         Error(_) -> todo as "handle model decode error"
       }
     }
-    EventSource(lustre_event_source.OnOpen(event_source)) -> {
+    EventSource(lustre_event_source.Init(event_source))
+    | EventSource(lustre_event_source.OnOpen(event_source)) -> {
       #(
         Model(..model, event_source: stop.live_status(event_source)),
         effect.none(),
