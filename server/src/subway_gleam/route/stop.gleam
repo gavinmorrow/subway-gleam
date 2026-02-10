@@ -31,6 +31,30 @@ pub fn stop(
 ) -> wisp.Response {
   use req <- try_lustre_res(req)
 
+  case model(req, state, stop_id) {
+    Ok(model) -> {
+      let head = [
+        html.title([], "Trains at " <> model.name),
+        hydration_scripts("stop", stop.model_to_json(model)),
+      ]
+      let body = [
+        html.div([attribute.id("app")], [
+          stop.view(model),
+        ]),
+      ]
+
+      Ok(#(Document(head:, body:), wisp.response(200)))
+    }
+    Error(InvalidStopId(stop_id)) -> Error(error_invalid_stop_id(stop_id))
+    Error(UnknownStop(stop_id)) -> Error(error_unknown_stop(stop_id))
+  }
+}
+
+fn model(
+  req: wisp.Request,
+  state: state.State,
+  stop_id: String,
+) -> Result(stop.Model, Error) {
   // TODO: make this a function?
   let highlighted_train =
     req.query
@@ -43,12 +67,12 @@ pub fn stop(
 
   use stop_id <- result.try(
     st.parse_stop_id_no_direction(stop_id)
-    |> result.replace_error(error_invalid_stop(stop_id)),
+    |> result.replace_error(InvalidStopId(stop_id)),
   )
   use stop <- result.try(
     state.schedule.stops
     |> dict.get(#(stop_id, option.None))
-    |> result.replace_error(error_unknown_stop(stop_id)),
+    |> result.replace_error(UnknownStop(stop_id)),
   )
 
   let routes =
@@ -116,27 +140,14 @@ pub fn stop(
   // let uptown = uptown |> list.take(from: _, up_to: 10)
   // let downtown = downtown |> list.take(from: _, up_to: 10)
 
-  let model =
-    stop.Model(
-      name: stop.name,
-      last_updated:,
-      transfers:,
-      alert_summary:,
-      uptown:,
-      downtown:,
-    )
-
-  let head = [
-    html.title([], "Trains at " <> stop.name),
-    hydration_scripts("stop", stop.model_to_json(model)),
-  ]
-  let body = [
-    html.div([attribute.id("app")], [
-      stop.view(model),
-    ]),
-  ]
-
-  Ok(#(Document(head:, body:), wisp.response(200)))
+  Ok(stop.Model(
+    name: stop.name,
+    last_updated:,
+    transfers:,
+    alert_summary:,
+    uptown:,
+    downtown:,
+  ))
 }
 
 fn filter_alerts(
@@ -198,7 +209,7 @@ pub fn alerts(
 
   use stop_id <- result.try(
     st.parse_stop_id_no_direction(stop_id)
-    |> result.replace_error(error_invalid_stop(stop_id)),
+    |> result.replace_error(error_invalid_stop_id(stop_id)),
   )
   use stop <- result.try(
     state.schedule.stops
@@ -232,7 +243,12 @@ pub fn alerts(
   Ok(#(Document(head:, body:), wisp.response(200)))
 }
 
-fn error_invalid_stop(
+pub type Error {
+  InvalidStopId(stop_id: String)
+  UnknownStop(stop_id: st.StopId)
+}
+
+fn error_invalid_stop_id(
   stop_id: String,
 ) -> #(lustre_middleware.LustreRes(a), wisp.Response) {
   #(
