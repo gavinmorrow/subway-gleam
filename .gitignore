@@ -2,6 +2,10 @@
 *.ez
 */build
 erl_crash.dump
+**/.lustre/
+
+# Don't check in the generated .js files
+server/priv/**/*.js
 
 # Temporary
 gtfs_subway.zip
