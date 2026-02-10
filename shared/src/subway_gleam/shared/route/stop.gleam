@@ -11,11 +11,13 @@ import lustre/element.{type Element}
 import lustre/element/html
 import lustre_event_source
 
-import shared/component/route_bullet.{type RouteBullet, route_bullet}
-import shared/util
-import shared/util/stop_id_json
-import shared/util/timestamp_json
 import subway_gleam/gtfs/st
+import subway_gleam/shared/component/route_bullet.{
+  type RouteBullet, route_bullet,
+}
+import subway_gleam/shared/util
+import subway_gleam/shared/util/stop_id_json
+import subway_gleam/shared/util/timestamp_json
 
 pub type Model {
   Model(

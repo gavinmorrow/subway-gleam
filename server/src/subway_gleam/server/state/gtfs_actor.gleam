@@ -5,9 +5,9 @@ import gleam/result
 import gleam/set
 import gleam/time/timestamp
 
-import shared/util
 import subway_gleam/gtfs/rt
 import subway_gleam/server/gtfs/fetch_rt
+import subway_gleam/shared/util
 
 pub type Subject =
   process.Subject(Message)

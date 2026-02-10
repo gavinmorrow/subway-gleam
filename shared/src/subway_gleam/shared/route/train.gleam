@@ -5,8 +5,11 @@ import gleam/time/timestamp
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html
-import shared/component/route_bullet.{type RouteBullet, route_bullet}
-import shared/util
+
+import subway_gleam/shared/component/route_bullet.{
+  type RouteBullet, route_bullet,
+}
+import subway_gleam/shared/util
 
 pub type Model {
   Model(last_updated: timestamp.Timestamp, stops: List(Stop))

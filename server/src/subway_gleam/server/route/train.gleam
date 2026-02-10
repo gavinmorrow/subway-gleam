@@ -11,14 +11,14 @@ import lustre/attribute
 import lustre/element/html
 import wisp
 
-import shared/component/route_bullet
-import shared/route/train
-import shared/util
 import subway_gleam/gtfs/rt
 import subway_gleam/gtfs/st
 import subway_gleam/server/lustre_middleware.{Body, Document, try_lustre_res}
 import subway_gleam/server/state
 import subway_gleam/server/state/gtfs_actor
+import subway_gleam/shared/component/route_bullet
+import subway_gleam/shared/route/train
+import subway_gleam/shared/util
 
 pub fn train(
   req: wisp.Request,

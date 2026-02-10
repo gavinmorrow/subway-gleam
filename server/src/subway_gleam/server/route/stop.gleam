@@ -13,16 +13,16 @@ import lustre/attribute
 import lustre/element/html
 import wisp
 
-import shared/component/route_bullet
-import shared/route/stop
-import shared/route/stop/alerts
-import shared/util
 import subway_gleam/gtfs/rt
 import subway_gleam/gtfs/st
 import subway_gleam/server/hydration_scripts.{hydration_scripts}
 import subway_gleam/server/lustre_middleware.{Document, try_lustre_res}
 import subway_gleam/server/state
 import subway_gleam/server/state/gtfs_actor
+import subway_gleam/shared/component/route_bullet
+import subway_gleam/shared/route/stop
+import subway_gleam/shared/route/stop/alerts
+import subway_gleam/shared/util
 
 pub fn stop(
   req: wisp.Request,

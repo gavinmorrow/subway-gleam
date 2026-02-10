@@ -7,11 +7,12 @@ import gleam/time/timestamp
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html
-import shared/component/rich_text
-import shared/component/route_bullet.{route_bullet}
-import shared/util
+
 import subway_gleam/gtfs/rt
 import subway_gleam/gtfs/st
+import subway_gleam/shared/component/rich_text
+import subway_gleam/shared/component/route_bullet.{route_bullet}
+import subway_gleam/shared/util
 
 pub type Model(msg) {
   Model(

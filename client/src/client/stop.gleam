@@ -6,7 +6,7 @@ import lustre_event_source
 import plinth/browser/document
 import plinth/browser/element
 
-import shared/route/stop.{type Model, Model, view}
+import subway_gleam/shared/route/stop.{type Model, Model, view}
 
 pub fn main() -> Result(lustre.Runtime(Msg), lustre.Error) {
   // TODO: handle errors: model not found, and invalid JSON

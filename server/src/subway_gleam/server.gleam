@@ -10,7 +10,6 @@ import repeatedly
 import wisp
 import wisp/wisp_mist
 
-import shared/route/stop as shared_stop
 import subway_gleam/gtfs/comp_flags
 import subway_gleam/gtfs/st
 import subway_gleam/gtfs/st/schedule_sample
@@ -22,6 +21,7 @@ import subway_gleam/server/route
 import subway_gleam/server/route/stop
 import subway_gleam/server/state
 import subway_gleam/server/state/gtfs_actor
+import subway_gleam/shared/route/stop as shared_stop
 
 pub fn main() -> Nil {
   let assert Ok(priv_dir) = wisp.priv_directory("subway_gleam")
