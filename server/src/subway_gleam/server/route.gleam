@@ -1,10 +1,10 @@
 import lustre/element/html
-import subway_gleam/route/line
-import subway_gleam/route/stop
-import subway_gleam/route/train
 import wisp
 
-import subway_gleam/lustre_middleware.{Body, lustre_res}
+import subway_gleam/server/lustre_middleware.{Body, lustre_res}
+import subway_gleam/server/route/line
+import subway_gleam/server/route/stop
+import subway_gleam/server/route/train
 
 pub fn index(req: wisp.Request) -> wisp.Response {
   use _req <- lustre_res(req)

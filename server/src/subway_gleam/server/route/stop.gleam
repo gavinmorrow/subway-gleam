@@ -19,10 +19,10 @@ import shared/route/stop/alerts
 import shared/util
 import subway_gleam/gtfs/rt
 import subway_gleam/gtfs/st
-import subway_gleam/hydration_scripts.{hydration_scripts}
-import subway_gleam/lustre_middleware.{Document, try_lustre_res}
-import subway_gleam/state
-import subway_gleam/state/gtfs_actor
+import subway_gleam/server/hydration_scripts.{hydration_scripts}
+import subway_gleam/server/lustre_middleware.{Document, try_lustre_res}
+import subway_gleam/server/state
+import subway_gleam/server/state/gtfs_actor
 
 pub fn stop(
   req: wisp.Request,

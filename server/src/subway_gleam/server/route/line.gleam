@@ -10,8 +10,8 @@ import lustre/element/html
 import wisp
 
 import subway_gleam/gtfs/st
-import subway_gleam/lustre_middleware.{Document, try_lustre_res}
-import subway_gleam/state
+import subway_gleam/server/lustre_middleware.{Document, try_lustre_res}
+import subway_gleam/server/state
 
 pub fn line(req: wisp.Request, state: state.State, route_id: String) {
   use _req <- try_lustre_res(req)

@@ -1,7 +1,7 @@
 import gleam/otp/actor
 
 import subway_gleam/gtfs/st
-import subway_gleam/state/gtfs_actor
+import subway_gleam/server/state/gtfs_actor
 
 pub type State {
   State(

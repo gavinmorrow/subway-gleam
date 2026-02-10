@@ -12,14 +12,16 @@ import wisp/wisp_mist
 
 import shared/route/stop as shared_stop
 import subway_gleam/gtfs/comp_flags
-import subway_gleam/gtfs/fetch_st
 import subway_gleam/gtfs/st
 import subway_gleam/gtfs/st/schedule_sample
-import subway_gleam/normalize_path_trailing_slash.{normalize_path_trailing_slash}
-import subway_gleam/route
-import subway_gleam/route/stop
-import subway_gleam/state
-import subway_gleam/state/gtfs_actor
+import subway_gleam/server/gtfs/fetch_st
+import subway_gleam/server/normalize_path_trailing_slash.{
+  normalize_path_trailing_slash,
+}
+import subway_gleam/server/route
+import subway_gleam/server/route/stop
+import subway_gleam/server/state
+import subway_gleam/server/state/gtfs_actor
 
 pub fn main() -> Nil {
   let assert Ok(priv_dir) = wisp.priv_directory("subway_gleam")
