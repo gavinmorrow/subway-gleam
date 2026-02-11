@@ -1,3 +1,4 @@
+import gleam/bool
 import gleam/dynamic/decode
 import gleam/int
 import gleam/json
@@ -52,8 +53,8 @@ pub fn view(model: Model) -> Element(msg) {
         routes,
       )
     })
-  let uptown = list.map(uptown, arrival_li)
-  let downtown = list.map(downtown, arrival_li)
+  let uptown = list.filter_map(uptown, arrival_li)
+  let downtown = list.filter_map(downtown, arrival_li)
 
   let live_status = case event_source {
     Connecting(_) -> element.text("Conecting...")
@@ -180,8 +181,13 @@ fn arrival_to_json(arrival: Arrival) -> json.Json {
   ])
 }
 
-fn arrival_li(arrival: Arrival) -> Element(msg) {
+fn arrival_li(arrival: Arrival) -> Result(Element(msg), Nil) {
   let Arrival(train_url:, is_highlighted:, route:, headsign:, time:) = arrival
+
+  // Filter to not show departed trains
+  let dt = time |> util.min_from_now
+  use <- bool.guard(when: dt < 0, return: Error(Nil))
+
   let headsign =
     result.map(headsign, fn(headsign) { html.span([], [html.text(headsign)]) })
 
@@ -196,6 +202,7 @@ fn arrival_li(arrival: Arrival) -> Element(msg) {
         headsign |> result.unwrap(or: element.none()),
         html.span([], [
           html.text(
+            // TODO: view funcs should be pure. pass this as an arg?
             time
             |> util.min_from_now
             |> int.to_string
@@ -205,6 +212,7 @@ fn arrival_li(arrival: Arrival) -> Element(msg) {
       ],
     ),
   ])
+  |> Ok
 }
 
 pub type LiveStatus {

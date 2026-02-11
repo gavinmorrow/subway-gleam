@@ -18,7 +18,6 @@ import subway_gleam/server/state
 import subway_gleam/server/state/gtfs_actor
 import subway_gleam/shared/component/route_bullet
 import subway_gleam/shared/route/train
-import subway_gleam/shared/util
 
 pub fn train(
   req: wisp.Request,
@@ -58,19 +57,13 @@ pub fn train(
       // If the stop doesn't exist in the stops.txt, it's an internal timepoint
       // and can be ignored.
       // See <https://groups.google.com/g/mtadeveloperresources/c/fdlP92IKmF8>
-      use stop <- result.try(
+      result.map(
         dict.get(state.schedule.stops, #(
           arrival.stop_id,
           option.Some(arrival.direction),
         )),
+        stop_li(_, arrival.time, train_id, highlighted_stop, state.schedule),
       )
-
-      let time = arrival.time
-      case time |> util.min_from_now {
-        dt if dt >= 0 ->
-          Ok(stop_li(stop, time, train_id, highlighted_stop, state.schedule))
-        _ -> Error(Nil)
-      }
     })
 
   let model = train.Model(last_updated:, stops:)
