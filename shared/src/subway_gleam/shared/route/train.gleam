@@ -1,3 +1,4 @@
+import gleam/bool
 import gleam/dynamic/decode
 import gleam/int
 import gleam/json
@@ -30,8 +31,7 @@ pub type Model {
 pub fn view(model: Model) -> Element(msg) {
   let Model(last_updated:, stops:, highlighted_stop:, event_source:) = model
 
-  // TODO: filter by ∆t > 0
-  let stops = list.map(stops, stop_li(_, highlighted_stop))
+  let stops = list.filter_map(stops, stop_li(_, highlighted_stop))
 
   let live_status = case event_source {
     live_status.Connecting(_) -> element.text("Conecting...")
@@ -123,8 +123,12 @@ fn stop_to_json(stop: Stop) -> json.Json {
 pub fn stop_li(
   stop: Stop,
   highlighted_stop: option.Option(st.StopId),
-) -> #(String, Element(msg)) {
+) -> Result(#(String, Element(msg)), Nil) {
   let Stop(id:, name:, stop_url:, transfers:, time:) = stop
+
+  let dt = util.min_from_now(time)
+  use <- bool.guard(when: dt < 0, return: Error(Nil))
+
   let transfers = list.map(transfers, route_bullet)
   let is_highlighted = option.Some(id) == highlighted_stop
 
@@ -146,4 +150,5 @@ pub fn stop_li(
       ),
     ]),
   )
+  |> Ok
 }
