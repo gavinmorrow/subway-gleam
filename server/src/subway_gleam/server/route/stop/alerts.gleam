@@ -4,6 +4,7 @@ import gleam/result
 import gleam/set
 import lustre/attribute
 import lustre/element/html
+import subway_gleam/shared/util
 import wisp
 
 import subway_gleam/gtfs/st
@@ -49,7 +50,13 @@ pub fn alerts(
     set.map(all_routes, with: st.route_data(in: state.schedule, for: _))
 
   let model =
-    alerts.Model(stop_name: stop.name, last_updated:, all_routes:, alerts:)
+    alerts.Model(
+      stop_name: stop.name,
+      last_updated:,
+      all_routes:,
+      alerts:,
+      cur_time: util.current_time(),
+    )
 
   let head = [html.title([], "Trains at " <> stop.name)]
   let body = [html.div([attribute.id("app")], [alerts.view(model)])]
