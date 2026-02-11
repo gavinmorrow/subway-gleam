@@ -61,6 +61,7 @@ pub fn model(
     |> list.key_find("stop_id")
     |> result.try(st.parse_stop_id)
     |> result.map(pair.first)
+    |> option.from_result
 
   let gtfs_actor.Data(current: gtfs, last_updated:) = state.fetch_gtfs(state)
 
@@ -88,11 +89,16 @@ pub fn model(
           arrival.stop_id,
           option.Some(arrival.direction),
         )),
-        stop_li(_, arrival.time, train_id, highlighted_stop, state.schedule),
+        stop_li(_, arrival.time, train_id, state.schedule),
       )
     })
 
-  Ok(train.Model(last_updated:, stops:, event_source: live_status.Unavailable))
+  Ok(train.Model(
+    last_updated:,
+    stops:,
+    highlighted_stop:,
+    event_source: live_status.Unavailable,
+  ))
 }
 
 pub type Error {
@@ -124,7 +130,6 @@ fn stop_li(
   stop: st.Stop(a),
   time: timestamp.Timestamp,
   train_id: rt.TrainId,
-  highlighted_stop: Result(st.StopId, Nil),
   schedule: st.Schedule,
 ) -> train.Stop {
   let stop_url = {
@@ -137,11 +142,6 @@ fn stop_li(
       |> string.replace(each: "+", with: "%2B")
     let query = uri.query_to_string([#("train_id", train_id)])
     "/stop/" <> stop_id <> "?" <> query
-  }
-
-  let is_highlighted = case highlighted_stop {
-    Ok(highlight) -> stop.id == highlight
-    _ -> False
   }
 
   let transfers =
@@ -157,5 +157,5 @@ fn stop_li(
     |> list.sort(by: st.route_compare)
     |> list.map(route_bullet.from_route_data)
 
-  train.Stop(name: stop.name, stop_url:, is_highlighted:, transfers:, time:)
+  train.Stop(id: stop.id, name: stop.name, stop_url:, transfers:, time:)
 }

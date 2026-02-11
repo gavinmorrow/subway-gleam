@@ -32,7 +32,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     EventSource(lustre_event_source.Data(data)) -> {
       case json.parse(from: data, using: train.model_decoder()) {
-        Ok(Model(event_source: _, last_updated:, stops:)) -> #(
+        Ok(Model(last_updated:, stops:, highlighted_stop: _, event_source: _)) -> #(
           Model(..model, last_updated:, stops:),
           effect.none(),
         )
