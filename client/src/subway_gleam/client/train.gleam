@@ -1,11 +1,13 @@
 import gleam/json
 import gleam/result
+import gleam/time/timestamp
 import lustre
 import lustre/effect.{type Effect}
 import lustre_event_source
 import plinth/browser/document
 import plinth/browser/element
 
+import subway_gleam/client/util/set_interval
 import subway_gleam/shared/route/train.{type Model, Model, view}
 import subway_gleam/shared/util/live_status.{live_status}
 
@@ -22,20 +24,27 @@ pub fn main() -> Result(lustre.Runtime(Msg), lustre.Error) {
 
 pub type Msg {
   EventSource(lustre_event_source.Message)
+  UpdateTime(timestamp.Timestamp)
 }
 
 fn init(flags: Model) -> #(Model, Effect(Msg)) {
-  #(flags, lustre_event_source.init("./model_stream", EventSource))
+  let update_cur_time = set_interval.update_time(UpdateTime)
+  let event_source = lustre_event_source.init("./model_stream", EventSource)
+
+  #(flags, effect.batch([update_cur_time, event_source]))
 }
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     EventSource(lustre_event_source.Data(data)) -> {
       case json.parse(from: data, using: train.model_decoder()) {
-        Ok(Model(last_updated:, stops:, highlighted_stop: _, event_source: _)) -> #(
-          Model(..model, last_updated:, stops:),
-          effect.none(),
-        )
+        Ok(Model(
+          last_updated:,
+          stops:,
+          highlighted_stop: _,
+          event_source: _,
+          cur_time: _,
+        )) -> #(Model(..model, last_updated:, stops:), effect.none())
         Error(_) -> todo as "handle model decode error"
       }
     }
@@ -55,5 +64,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       Model(..model, event_source: live_status.Unavailable),
       effect.none(),
     )
+
+    UpdateTime(cur_time) -> #(Model(..model, cur_time:), effect.none())
   }
 }

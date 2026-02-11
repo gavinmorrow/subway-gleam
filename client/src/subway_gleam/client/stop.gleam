@@ -1,15 +1,13 @@
 import gleam/json
 import gleam/result
-import gleam/time/duration
 import gleam/time/timestamp
 import lustre
 import lustre/effect.{type Effect}
 import lustre_event_source
 import plinth/browser/document
 import plinth/browser/element
-import subway_gleam/client/util/set_interval
-import subway_gleam/shared/util
 
+import subway_gleam/client/util/set_interval
 import subway_gleam/shared/route/stop.{type Model, Model, view}
 import subway_gleam/shared/util/live_status.{live_status}
 
@@ -30,12 +28,7 @@ pub type Msg {
 }
 
 fn init(flags: Model) -> #(Model, Effect(Msg)) {
-  let update_cur_time =
-    set_interval.set_interval(
-      every: duration.seconds(15),
-      do: fn(dispatch) { dispatch(UpdateTime(util.current_time())) },
-      timer: fn(_) { Nil },
-    )
+  let update_cur_time = set_interval.update_time(UpdateTime)
   let event_source = lustre_event_source.init("./model_stream", EventSource)
 
   #(flags, effect.batch([update_cur_time, event_source]))

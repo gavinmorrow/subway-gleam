@@ -9,6 +9,7 @@ import gleam/time/timestamp
 import gleam/uri
 import lustre/attribute
 import lustre/element/html
+import subway_gleam/shared/util
 import wisp
 
 import subway_gleam/gtfs/rt
@@ -98,6 +99,7 @@ pub fn model(
     stops:,
     highlighted_stop:,
     event_source: live_status.Unavailable,
+    cur_time: util.current_time(),
   ))
 }
 

@@ -25,13 +25,15 @@ pub type Model {
     stops: List(Stop),
     highlighted_stop: option.Option(st.StopId),
     event_source: LiveStatus,
+    cur_time: timestamp.Timestamp,
   )
 }
 
 pub fn view(model: Model) -> Element(msg) {
-  let Model(last_updated:, stops:, highlighted_stop:, event_source:) = model
+  let Model(last_updated:, stops:, highlighted_stop:, event_source:, cur_time:) =
+    model
 
-  let stops = list.filter_map(stops, stop_li(_, highlighted_stop))
+  let stops = list.filter_map(stops, stop_li(_, highlighted_stop, cur_time))
 
   let live_status = case event_source {
     live_status.Connecting(_) -> element.text("Conecting...")
@@ -59,17 +61,25 @@ pub fn model_decoder() -> decode.Decoder(Model) {
     "highlighted_stop",
     decode.optional(decode.string |> decode.map(st.StopId)),
   )
+  use cur_time <- decode.field("cur_time", timestamp_json.decoder())
 
   decode.success(Model(
     last_updated:,
     stops:,
     highlighted_stop:,
     event_source: live_status.Unavailable,
+    cur_time:,
   ))
 }
 
 pub fn model_to_json(model: Model) -> json.Json {
-  let Model(last_updated:, stops:, highlighted_stop:, event_source: _) = model
+  let Model(
+    last_updated:,
+    stops:,
+    highlighted_stop:,
+    event_source: _,
+    cur_time:,
+  ) = model
 
   json.object([
     #("last_updated", timestamp_json.to_json(last_updated)),
@@ -81,6 +91,7 @@ pub fn model_to_json(model: Model) -> json.Json {
         json.string(str)
       }),
     ),
+    #("cur_time", timestamp_json.to_json(cur_time)),
   ])
 }
 
@@ -123,10 +134,11 @@ fn stop_to_json(stop: Stop) -> json.Json {
 pub fn stop_li(
   stop: Stop,
   highlighted_stop: option.Option(st.StopId),
+  cur_time: timestamp.Timestamp,
 ) -> Result(#(String, Element(msg)), Nil) {
   let Stop(id:, name:, stop_url:, transfers:, time:) = stop
 
-  let dt = util.min_from_now(time)
+  let dt = util.min_from(time, epoch: cur_time)
   use <- bool.guard(when: dt < 0, return: Error(Nil))
 
   let transfers = list.map(transfers, route_bullet)
@@ -144,7 +156,9 @@ pub fn stop_li(
         [
           html.span([], [html.text(name), ..transfers]),
           html.span([], [
-            html.text(time |> util.min_from_now |> int.to_string <> "min"),
+            html.text(
+              time |> util.min_from(epoch: cur_time) |> int.to_string <> "min",
+            ),
           ]),
         ],
       ),
