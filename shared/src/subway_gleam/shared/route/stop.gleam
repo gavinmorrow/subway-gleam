@@ -29,6 +29,7 @@ pub type Model {
     uptown: List(Arrival),
     downtown: List(Arrival),
     event_source: LiveStatus,
+    // TODO: move highlighted out of Stop and into here
   )
 }
 

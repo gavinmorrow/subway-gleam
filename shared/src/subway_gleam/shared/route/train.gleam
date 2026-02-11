@@ -20,6 +20,7 @@ pub type Model {
     last_updated: timestamp.Timestamp,
     stops: List(Stop),
     event_source: LiveStatus,
+    // TODO: move highlighted out of Stop and into here
   )
 }
 
