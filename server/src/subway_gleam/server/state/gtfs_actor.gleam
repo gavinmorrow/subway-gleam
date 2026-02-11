@@ -65,10 +65,12 @@ fn handle_message(state: State, msg: Message) -> actor.Next(State, Message) {
       actor.continue(State(..state, data:))
     }
 
-    SubscribeWatcher(subj) ->
+    SubscribeWatcher(subj) -> {
+      process.send(subj, Nil)
       actor.continue(
         State(..state, watchers: set.insert(subj, into: state.watchers)),
       )
+    }
     UnsubscribeWatcher(subj) ->
       actor.continue(
         State(..state, watchers: set.delete(subj, from: state.watchers)),
