@@ -4,6 +4,7 @@ import wisp
 import subway_gleam/server/lustre_middleware.{Body, lustre_res}
 import subway_gleam/server/route/line
 import subway_gleam/server/route/stop
+import subway_gleam/server/route/stop/alerts
 import subway_gleam/server/route/train
 
 pub fn index(req: wisp.Request) -> wisp.Response {
@@ -26,7 +27,7 @@ pub fn not_found(req: wisp.Request) -> wisp.Response {
 
 pub const stop = stop.stop
 
-pub const stop_alerts = stop.alerts
+pub const stop_alerts = alerts.alerts
 
 pub const train = train.train
 
