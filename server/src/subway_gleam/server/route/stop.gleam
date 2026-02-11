@@ -123,13 +123,6 @@ pub fn model(
     |> list.sort(by: fn(a, b) {
       timestamp.compare(a.time, b.time) |> order.negate
     })
-    |> list.filter(keeping: fn(a) {
-      // Strip out times that are in the past
-      case timestamp.compare(a.time, util.current_time()) {
-        order.Eq | order.Gt -> True
-        order.Lt -> False
-      }
-    })
     |> list.fold(from: #([], []), with: fn(acc, update) {
       let #(uptown_acc, downtown_acc) = acc
       let li = arrival_li(update, state.schedule, gtfs)
@@ -150,6 +143,7 @@ pub fn model(
     downtown:,
     highlighted_train:,
     event_source: live_status.Unavailable,
+    cur_time: util.current_time(),
   ))
 }
 

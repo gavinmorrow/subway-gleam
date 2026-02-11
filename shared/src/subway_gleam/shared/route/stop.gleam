@@ -32,6 +32,7 @@ pub type Model {
     downtown: List(Arrival),
     highlighted_train: option.Option(rt.TrainId),
     event_source: LiveStatus,
+    cur_time: timestamp.Timestamp,
   )
 }
 
@@ -45,6 +46,7 @@ pub fn view(model: Model) -> Element(msg) {
     downtown:,
     highlighted_train:,
     event_source:,
+    cur_time:,
   ) = model
 
   let transfers =
@@ -57,8 +59,10 @@ pub fn view(model: Model) -> Element(msg) {
         routes,
       )
     })
-  let uptown = list.filter_map(uptown, arrival_li(_, highlighted_train))
-  let downtown = list.filter_map(downtown, arrival_li(_, highlighted_train))
+  let uptown =
+    list.filter_map(uptown, arrival_li(_, highlighted_train, cur_time))
+  let downtown =
+    list.filter_map(downtown, arrival_li(_, highlighted_train, cur_time))
 
   let live_status = case event_source {
     live_status.Connecting(_) -> element.text("Conecting...")
@@ -100,6 +104,7 @@ pub fn model_decoder() -> decode.Decoder(Model) {
   )
   use uptown <- decode.field("uptown", decode.list(arrival_decoder()))
   use downtown <- decode.field("downtown", decode.list(arrival_decoder()))
+  use cur_time <- decode.field("cur_time", timestamp_json.decoder())
 
   decode.success(Model(
     name:,
@@ -110,6 +115,7 @@ pub fn model_decoder() -> decode.Decoder(Model) {
     downtown:,
     highlighted_train:,
     event_source: live_status.Unavailable,
+    cur_time:,
   ))
 }
 
@@ -124,6 +130,7 @@ pub fn model_to_json(model: Model) -> json.Json {
     highlighted_train:,
     // Can't encode an EventSource
     event_source: _,
+    cur_time:,
   ) = model
 
   json.object([
@@ -139,6 +146,7 @@ pub fn model_to_json(model: Model) -> json.Json {
     ),
     #("uptown", json.array(uptown, arrival_to_json)),
     #("downtown", json.array(downtown, arrival_to_json)),
+    #("cur_time", timestamp_json.to_json(cur_time)),
   ])
 }
 
@@ -208,11 +216,12 @@ fn arrival_to_json(arrival: Arrival) -> json.Json {
 fn arrival_li(
   arrival: Arrival,
   highlighted_train: option.Option(rt.TrainId),
+  cur_time: timestamp.Timestamp,
 ) -> Result(#(String, Element(msg)), Nil) {
   let Arrival(train_id:, train_url:, route:, headsign:, time:) = arrival
 
   // Filter to not show departed trains
-  let dt = time |> util.min_from_now
+  let dt = time |> util.min_from(cur_time)
   use <- bool.guard(when: dt < 0, return: Error(Nil))
 
   let headsign =
@@ -236,9 +245,8 @@ fn arrival_li(
           headsign |> result.unwrap(or: element.none()),
           html.span([], [
             html.text(
-              // TODO: view funcs should be pure. pass this as an arg?
               time
-              |> util.min_from_now
+              |> util.min_from(cur_time)
               |> int.to_string
               <> "min",
             ),

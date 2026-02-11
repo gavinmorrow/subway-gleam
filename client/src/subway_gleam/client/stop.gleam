@@ -1,10 +1,14 @@
 import gleam/json
 import gleam/result
+import gleam/time/duration
+import gleam/time/timestamp
 import lustre
 import lustre/effect.{type Effect}
 import lustre_event_source
 import plinth/browser/document
 import plinth/browser/element
+import subway_gleam/client/util/set_interval
+import subway_gleam/shared/util
 
 import subway_gleam/shared/route/stop.{type Model, Model, view}
 import subway_gleam/shared/util/live_status.{live_status}
@@ -22,10 +26,19 @@ pub fn main() -> Result(lustre.Runtime(Msg), lustre.Error) {
 
 pub type Msg {
   EventSource(lustre_event_source.Message)
+  UpdateTime(timestamp.Timestamp)
 }
 
 fn init(flags: Model) -> #(Model, Effect(Msg)) {
-  #(flags, lustre_event_source.init("./model_stream", EventSource))
+  let update_cur_time =
+    set_interval.set_interval(
+      every: duration.seconds(15),
+      do: fn(dispatch) { dispatch(UpdateTime(util.current_time())) },
+      timer: fn(_) { Nil },
+    )
+  let event_source = lustre_event_source.init("./model_stream", EventSource)
+
+  #(flags, effect.batch([update_cur_time, event_source]))
 }
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
@@ -41,6 +54,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           downtown:,
           highlighted_train: _,
           event_source: _,
+          cur_time: _,
         )) -> #(
           Model(
             ..model,
@@ -72,5 +86,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       Model(..model, event_source: live_status.Unavailable),
       effect.none(),
     )
+
+    UpdateTime(cur_time) -> #(Model(..model, cur_time:), effect.none())
   }
 }

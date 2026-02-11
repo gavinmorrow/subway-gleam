@@ -11,13 +11,20 @@ pub fn current_time() -> timestamp.Timestamp {
   comp_flags.rt_time()
 }
 
-pub fn min_from_now(time: timestamp.Timestamp) -> Int {
+pub fn min_from(
+  time: timestamp.Timestamp,
+  epoch epoch: timestamp.Timestamp,
+) -> Int {
   time
-  |> timestamp.difference(current_time(), _)
+  |> timestamp.difference(epoch, _)
   |> duration.to_seconds()
   |> float.divide(60.0)
   |> result.unwrap(0.0)
   |> float.round
+}
+
+pub fn min_from_now(time: timestamp.Timestamp) -> Int {
+  time |> min_from(epoch: current_time())
 }
 
 // See <https://github.com/gleam-lang/time/issues/41>
