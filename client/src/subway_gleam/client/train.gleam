@@ -6,7 +6,7 @@ import lustre_event_source
 import plinth/browser/document
 import plinth/browser/element
 
-import subway_gleam/shared/route/stop.{type Model, Model, view}
+import subway_gleam/shared/route/train.{type Model, Model, view}
 import subway_gleam/shared/util/live_status.{live_status}
 
 pub fn main() -> Result(lustre.Runtime(Msg), lustre.Error) {
@@ -14,7 +14,7 @@ pub fn main() -> Result(lustre.Runtime(Msg), lustre.Error) {
   let assert Ok(Ok(hydrated_model)) =
     document.get_element_by_id("model")
     |> result.map(element.inner_text)
-    |> result.map(json.parse(_, stop.model_decoder()))
+    |> result.map(json.parse(_, train.model_decoder()))
 
   let app = lustre.application(init, update, view)
   lustre.start(app, onto: "#app", with: hydrated_model)
@@ -31,25 +31,9 @@ fn init(flags: Model) -> #(Model, Effect(Msg)) {
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     EventSource(lustre_event_source.Data(data)) -> {
-      case json.parse(from: data, using: stop.model_decoder()) {
-        Ok(Model(
-          name:,
-          last_updated:,
-          transfers:,
-          alert_summary:,
-          uptown:,
-          downtown:,
-          event_source: _,
-        )) -> #(
-          Model(
-            ..model,
-            name:,
-            last_updated:,
-            transfers:,
-            alert_summary:,
-            uptown:,
-            downtown:,
-          ),
+      case json.parse(from: data, using: train.model_decoder()) {
+        Ok(Model(event_source: _, last_updated:, stops:)) -> #(
+          Model(..model, last_updated:, stops:),
           effect.none(),
         )
         Error(_) -> todo as "handle model decode error"

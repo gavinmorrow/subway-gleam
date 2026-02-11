@@ -23,6 +23,7 @@ import subway_gleam/shared/component/route_bullet
 import subway_gleam/shared/route/stop
 import subway_gleam/shared/route/stop/alerts
 import subway_gleam/shared/util
+import subway_gleam/shared/util/live_status
 
 pub fn stop(
   req: wisp.Request,
@@ -147,7 +148,7 @@ pub fn model(
     alert_summary:,
     uptown:,
     downtown:,
-    event_source: stop.Unavailable,
+    event_source: live_status.Unavailable,
   ))
 }
 

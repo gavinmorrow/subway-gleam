@@ -10,13 +10,13 @@ import gleam/time/timestamp
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html
-import lustre_event_source
 
 import subway_gleam/gtfs/st
 import subway_gleam/shared/component/route_bullet.{
   type RouteBullet, route_bullet,
 }
 import subway_gleam/shared/util
+import subway_gleam/shared/util/live_status.{type LiveStatus}
 import subway_gleam/shared/util/stop_id_json
 import subway_gleam/shared/util/timestamp_json
 
@@ -57,9 +57,9 @@ pub fn view(model: Model) -> Element(msg) {
   let downtown = list.filter_map(downtown, arrival_li)
 
   let live_status = case event_source {
-    Connecting(_) -> element.text("Conecting...")
-    Live(_) -> element.text("Live!")
-    Unavailable -> element.text("Live not available.")
+    live_status.Connecting(_) -> element.text("Conecting...")
+    live_status.Live(_) -> element.text("Live!")
+    live_status.Unavailable -> element.text("Live not available.")
   }
 
   html.div([], [
@@ -100,7 +100,7 @@ pub fn model_decoder() -> decode.Decoder(Model) {
     alert_summary:,
     uptown:,
     downtown:,
-    event_source: Unavailable,
+    event_source: live_status.Unavailable,
   ))
 }
 
@@ -213,21 +213,4 @@ fn arrival_li(arrival: Arrival) -> Result(Element(msg), Nil) {
     ),
   ])
   |> Ok
-}
-
-pub type LiveStatus {
-  Connecting(lustre_event_source.EventSource)
-  Live(lustre_event_source.EventSource)
-  Unavailable
-}
-
-pub fn live_status(
-  for event_source: lustre_event_source.EventSource,
-) -> LiveStatus {
-  let ready_state = lustre_event_source.ready_state(event_source)
-  case ready_state {
-    lustre_event_source.Connecting -> Connecting(event_source)
-    lustre_event_source.Open -> Live(event_source)
-    lustre_event_source.Closed -> Unavailable
-  }
 }

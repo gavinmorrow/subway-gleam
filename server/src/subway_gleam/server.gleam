@@ -19,9 +19,11 @@ import subway_gleam/server/normalize_path_trailing_slash.{
 }
 import subway_gleam/server/route
 import subway_gleam/server/route/stop
+import subway_gleam/server/route/train
 import subway_gleam/server/state
 import subway_gleam/server/state/gtfs_actor
 import subway_gleam/shared/route/stop as shared_stop
+import subway_gleam/shared/route/train as shared_train
 
 pub fn main() -> Nil {
   let assert Ok(priv_dir) = wisp.priv_directory("subway_gleam")
@@ -63,6 +65,7 @@ fn mist_handler(
   secret_key_base: String,
 ) -> response.Response(mist.ResponseData) {
   case request.path_segments(req) {
+    // TODO: figure out some abstraction for this. also move out of this file
     ["stop", stop_id, "model_stream"] ->
       mist.server_sent_events(
         request: req,
@@ -80,6 +83,38 @@ fn mist_handler(
             stop.model(state, stop_id, req.query)
             |> result.replace_error(Nil)
             |> result.map(shared_stop.model_to_json)
+            |> result.map(json.to_string_tree)
+
+          let event = model |> result.map(mist.event)
+          case result.try(event, mist.send_event(conn, _)) {
+            Ok(Nil) -> actor.continue(self)
+            Error(Nil) -> {
+              process.send(
+                state.gtfs_actor.data,
+                gtfs_actor.UnsubscribeWatcher(self),
+              )
+              actor.stop()
+            }
+          }
+        },
+      )
+    ["train", train_id, "model_stream"] ->
+      mist.server_sent_events(
+        request: req,
+        initial_response: response.new(200),
+        init: fn(self) {
+          process.send(state.gtfs_actor.data, gtfs_actor.SubscribeWatcher(self))
+          Ok(actor.initialised(self))
+        },
+        loop: fn(
+          self: process.Subject(Nil),
+          _msg: Nil,
+          conn: mist.SSEConnection,
+        ) -> actor.Next(process.Subject(Nil), Nil) {
+          let model =
+            train.model(state, train_id, req.query)
+            |> result.replace_error(Nil)
+            |> result.map(shared_train.model_to_json)
             |> result.map(json.to_string_tree)
 
           let event = model |> result.map(mist.event)

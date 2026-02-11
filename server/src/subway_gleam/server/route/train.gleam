@@ -13,11 +13,13 @@ import wisp
 
 import subway_gleam/gtfs/rt
 import subway_gleam/gtfs/st
+import subway_gleam/server/hydration_scripts.{hydration_scripts}
 import subway_gleam/server/lustre_middleware.{Body, Document, try_lustre_res}
 import subway_gleam/server/state
 import subway_gleam/server/state/gtfs_actor
 import subway_gleam/shared/component/route_bullet
 import subway_gleam/shared/route/train
+import subway_gleam/shared/util/live_status
 
 pub fn train(
   req: wisp.Request,
@@ -26,9 +28,33 @@ pub fn train(
 ) -> wisp.Response {
   use req <- try_lustre_res(req)
 
+  case model(state, train_id, req.query) {
+    Ok(model) -> {
+      let head = [
+        hydration_scripts("train", train.model_to_json(model)),
+      ]
+      let body = [
+        html.div([attribute.id("app")], [
+          train.view(model),
+        ]),
+      ]
+
+      Ok(#(Document(head:, body:), wisp.response(200)))
+    }
+    Error(InvalidTrainIdEncoding) -> Error(error_invalid_train_id_encoding())
+    Error(CouldNotFindTrain(train_id)) ->
+      Error(error_could_not_find_train(train_id))
+  }
+}
+
+pub fn model(
+  state: state.State,
+  train_id: String,
+  query: option.Option(String),
+) -> Result(train.Model, Error) {
   // TODO: make this a function?
   let highlighted_stop =
-    req.query
+    query
     |> option.to_result(Nil)
     |> result.try(uri.parse_query)
     |> result.unwrap(or: [])
@@ -40,7 +66,7 @@ pub fn train(
 
   use train_id <- result.try(
     uri.percent_decode(train_id)
-    |> result.replace_error(error_invalid_train_id_encoding()),
+    |> result.replace_error(InvalidTrainIdEncoding),
   )
   let train_id = rt.TrainId(train_id)
 
@@ -48,7 +74,7 @@ pub fn train(
     dict.get(gtfs.trips, train_id)
     |> result.replace_error({
       let rt.TrainId(train_id) = train_id
-      error_could_not_find_train(train_id)
+      CouldNotFindTrain(train_id)
     })
   use stops <- result.try(trip)
 
@@ -66,14 +92,12 @@ pub fn train(
       )
     })
 
-  let model = train.Model(last_updated:, stops:)
-  let body = [
-    html.div([attribute.id("app")], [
-      train.view(model),
-    ]),
-  ]
+  Ok(train.Model(last_updated:, stops:, event_source: live_status.Unavailable))
+}
 
-  Ok(#(Body(body:), wisp.response(200)))
+pub type Error {
+  InvalidTrainIdEncoding
+  CouldNotFindTrain(train_id: String)
 }
 
 fn error_invalid_train_id_encoding() -> #(
