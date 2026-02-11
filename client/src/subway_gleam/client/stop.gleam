@@ -39,6 +39,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           alert_summary:,
           uptown:,
           downtown:,
+          highlighted_train: _,
           event_source: _,
         )) -> #(
           Model(

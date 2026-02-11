@@ -64,6 +64,7 @@ pub fn model(
     |> list.key_find("train_id")
     |> result.try(uri.percent_decode)
     |> result.map(rt.TrainId)
+    |> option.from_result
 
   use stop_id <- result.try(
     st.parse_stop_id_no_direction(stop_id)
@@ -131,7 +132,7 @@ pub fn model(
     })
     |> list.fold(from: #([], []), with: fn(acc, update) {
       let #(uptown_acc, downtown_acc) = acc
-      let li = arrival_li(update, state.schedule, gtfs, highlighted_train)
+      let li = arrival_li(update, state.schedule, gtfs)
       case update.direction {
         st.North -> #([li, ..uptown_acc], downtown_acc)
         st.South -> #(uptown_acc, [li, ..downtown_acc])
@@ -147,6 +148,7 @@ pub fn model(
     alert_summary:,
     uptown:,
     downtown:,
+    highlighted_train:,
     event_source: live_status.Unavailable,
   ))
 }
@@ -236,7 +238,6 @@ fn arrival_li(
   update: rt.TrainStopping,
   schedule: st.Schedule,
   gtfs: rt.Data,
-  highlighted_train: Result(rt.TrainId, Nil),
 ) -> stop.Arrival {
   let rt.TrainStopping(trip:, time:, stop_id: _, direction: _) = update
 
@@ -277,15 +278,11 @@ fn arrival_li(
     |> option.unwrap(or: "")
 
   let train_id = update.trip.nyct.train_id |> option.map(rt.TrainId)
-  let is_highlighted = case train_id, highlighted_train {
-    option.Some(train_id), Ok(highlight) -> train_id == highlight
-    _, _ -> False
-  }
 
   // TODO: what to do here?? try to get rid of assert.
   let assert Ok(route_id) = st.parse_route(trip.route_id)
   let route =
     schedule |> st.route_data(for: route_id) |> route_bullet.from_route_data
 
-  stop.Arrival(train_url:, is_highlighted:, route:, headsign:, time:)
+  stop.Arrival(train_id:, train_url:, route:, headsign:, time:)
 }

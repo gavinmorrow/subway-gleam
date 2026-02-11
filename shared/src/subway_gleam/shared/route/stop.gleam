@@ -10,6 +10,8 @@ import gleam/time/timestamp
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html
+import lustre/element/keyed
+import subway_gleam/gtfs/rt
 
 import subway_gleam/gtfs/st
 import subway_gleam/shared/component/route_bullet.{
@@ -28,8 +30,8 @@ pub type Model {
     alert_summary: String,
     uptown: List(Arrival),
     downtown: List(Arrival),
+    highlighted_train: option.Option(rt.TrainId),
     event_source: LiveStatus,
-    // TODO: move highlighted out of Stop and into here
   )
 }
 
@@ -41,6 +43,7 @@ pub fn view(model: Model) -> Element(msg) {
     alert_summary:,
     uptown:,
     downtown:,
+    highlighted_train:,
     event_source:,
   ) = model
 
@@ -54,8 +57,8 @@ pub fn view(model: Model) -> Element(msg) {
         routes,
       )
     })
-  let uptown = list.filter_map(uptown, arrival_li)
-  let downtown = list.filter_map(downtown, arrival_li)
+  let uptown = list.filter_map(uptown, arrival_li(_, highlighted_train))
+  let downtown = list.filter_map(downtown, arrival_li(_, highlighted_train))
 
   let live_status = case event_source {
     live_status.Connecting(_) -> element.text("Conecting...")
@@ -80,9 +83,9 @@ pub fn view(model: Model) -> Element(msg) {
       html.a([attribute.href("./alerts")], [html.text(alert_summary)]),
     ]),
     html.h2([], [html.text("Uptown")]),
-    html.ul([attribute.class("arrival-list")], uptown),
+    keyed.ul([attribute.class("arrival-list")], uptown),
     html.h2([], [html.text("Downtown")]),
-    html.ul([attribute.class("arrival-list")], downtown),
+    keyed.ul([attribute.class("arrival-list")], downtown),
   ])
 }
 
@@ -91,6 +94,10 @@ pub fn model_decoder() -> decode.Decoder(Model) {
   use last_updated <- decode.field("last_updated", timestamp_json.decoder())
   use transfers <- decode.field("transfers", decode.list(transfer_decoder()))
   use alert_summary <- decode.field("alert_summary", decode.string)
+  use highlighted_train <- decode.field(
+    "highlighted_train",
+    decode.optional(decode.string |> decode.map(rt.TrainId)),
+  )
   use uptown <- decode.field("uptown", decode.list(arrival_decoder()))
   use downtown <- decode.field("downtown", decode.list(arrival_decoder()))
 
@@ -101,6 +108,7 @@ pub fn model_decoder() -> decode.Decoder(Model) {
     alert_summary:,
     uptown:,
     downtown:,
+    highlighted_train:,
     event_source: live_status.Unavailable,
   ))
 }
@@ -113,6 +121,7 @@ pub fn model_to_json(model: Model) -> json.Json {
     alert_summary:,
     uptown:,
     downtown:,
+    highlighted_train:,
     // Can't encode an EventSource
     event_source: _,
   ) = model
@@ -122,6 +131,12 @@ pub fn model_to_json(model: Model) -> json.Json {
     #("last_updated", timestamp_json.to_json(last_updated)),
     #("transfers", json.array(transfers, transfer_to_json)),
     #("alert_summary", json.string(alert_summary)),
+    #(
+      "highlighted_train",
+      json.nullable(from: highlighted_train, of: fn(id) {
+        json.string(rt.train_id_to_string(id))
+      }),
+    ),
     #("uptown", json.array(uptown, arrival_to_json)),
     #("downtown", json.array(downtown, arrival_to_json)),
   ])
@@ -149,8 +164,8 @@ fn transfer_to_json(transfer: Transfer) -> json.Json {
 
 pub type Arrival {
   Arrival(
+    train_id: option.Option(rt.TrainId),
     train_url: String,
-    is_highlighted: Bool,
     route: RouteBullet,
     headsign: Result(String, Nil),
     time: timestamp.Timestamp,
@@ -158,8 +173,11 @@ pub type Arrival {
 }
 
 fn arrival_decoder() -> decode.Decoder(Arrival) {
+  use train_id <- decode.field(
+    "train_id",
+    decode.optional(decode.string |> decode.map(rt.TrainId)),
+  )
   use train_url <- decode.field("train_url", decode.string)
-  use is_highlighted <- decode.field("is_highlighted", decode.bool)
   use route <- decode.field("route", route_bullet.decoder())
   use headsign <- decode.field(
     "headsign",
@@ -167,23 +185,31 @@ fn arrival_decoder() -> decode.Decoder(Arrival) {
   )
   use time <- decode.field("time", timestamp_json.decoder())
 
-  decode.success(Arrival(train_url:, is_highlighted:, route:, headsign:, time:))
+  decode.success(Arrival(train_id:, train_url:, route:, headsign:, time:))
 }
 
 fn arrival_to_json(arrival: Arrival) -> json.Json {
-  let Arrival(train_url:, is_highlighted:, route:, headsign:, time:) = arrival
+  let Arrival(train_id:, train_url:, route:, headsign:, time:) = arrival
 
   json.object([
+    #(
+      "train_id",
+      json.nullable(from: train_id, of: fn(train_id) {
+        json.string(rt.train_id_to_string(train_id))
+      }),
+    ),
     #("train_url", json.string(train_url)),
-    #("is_highlighted", json.bool(is_highlighted)),
     #("route", route_bullet.to_json(route)),
     #("headsign", json.nullable(option.from_result(headsign), of: json.string)),
     #("time", timestamp_json.to_json(time)),
   ])
 }
 
-fn arrival_li(arrival: Arrival) -> Result(Element(msg), Nil) {
-  let Arrival(train_url:, is_highlighted:, route:, headsign:, time:) = arrival
+fn arrival_li(
+  arrival: Arrival,
+  highlighted_train: option.Option(rt.TrainId),
+) -> Result(#(String, Element(msg)), Nil) {
+  let Arrival(train_id:, train_url:, route:, headsign:, time:) = arrival
 
   // Filter to not show departed trains
   let dt = time |> util.min_from_now
@@ -192,26 +218,34 @@ fn arrival_li(arrival: Arrival) -> Result(Element(msg), Nil) {
   let headsign =
     result.map(headsign, fn(headsign) { html.span([], [html.text(headsign)]) })
 
-  html.li([], [
-    html.a(
-      [
-        attribute.href(train_url),
-        attribute.classes([#("highlight", is_highlighted)]),
-      ],
-      [
-        route_bullet(route),
-        headsign |> result.unwrap(or: element.none()),
-        html.span([], [
-          html.text(
-            // TODO: view funcs should be pure. pass this as an arg?
-            time
-            |> util.min_from_now
-            |> int.to_string
-            <> "min",
-          ),
-        ]),
-      ],
-    ),
-  ])
+  let is_highlighted = train_id == highlighted_train
+
+  #(
+    arrival.train_id
+      |> option.map(rt.train_id_to_string)
+      // TODO: is this the right option here
+      |> option.unwrap(int.random(1024) |> int.to_string),
+    html.li([], [
+      html.a(
+        [
+          attribute.href(train_url),
+          attribute.classes([#("highlight", is_highlighted)]),
+        ],
+        [
+          route_bullet(route),
+          headsign |> result.unwrap(or: element.none()),
+          html.span([], [
+            html.text(
+              // TODO: view funcs should be pure. pass this as an arg?
+              time
+              |> util.min_from_now
+              |> int.to_string
+              <> "min",
+            ),
+          ]),
+        ],
+      ),
+    ]),
+  )
   |> Ok
 }
