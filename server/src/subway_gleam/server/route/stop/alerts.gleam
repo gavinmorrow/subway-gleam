@@ -4,16 +4,16 @@ import gleam/result
 import gleam/set
 import lustre/attribute
 import lustre/element/html
-import subway_gleam/gtfs/rt
-import subway_gleam/shared/util
 import wisp
 
+import subway_gleam/gtfs/rt
 import subway_gleam/gtfs/st
 import subway_gleam/server/lustre_middleware.{Document, try_lustre_res}
 import subway_gleam/server/route/stop
 import subway_gleam/server/state
 import subway_gleam/server/state/gtfs_actor
 import subway_gleam/shared/route/stop/alerts
+import subway_gleam/shared/util
 
 pub fn alerts(
   req: wisp.Request,

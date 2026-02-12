@@ -27,6 +27,7 @@ pub type Model {
     name: String,
     last_updated: timestamp.Timestamp,
     transfers: List(Transfer),
+    alerted_routes: List(RouteBullet),
     alert_summary: String,
     uptown: List(Arrival),
     downtown: List(Arrival),
@@ -41,6 +42,7 @@ pub fn view(model: Model) -> Element(msg) {
     name:,
     last_updated:,
     transfers:,
+    alerted_routes:,
     alert_summary:,
     uptown:,
     downtown:,
@@ -48,6 +50,9 @@ pub fn view(model: Model) -> Element(msg) {
     event_source:,
     cur_time:,
   ) = model
+
+  let alerted_routes =
+    element.fragment(list.map(alerted_routes, with: route_bullet))
 
   let transfers =
     list.map(transfers, fn(transfer) {
@@ -84,7 +89,10 @@ pub fn view(model: Model) -> Element(msg) {
     ]),
     html.aside([], [html.text("Transfer to:"), ..transfers]),
     html.aside([], [
-      html.a([attribute.href("./alerts")], [html.text(alert_summary)]),
+      html.a([attribute.href("./alerts")], [
+        alerted_routes,
+        html.text(alert_summary),
+      ]),
     ]),
     html.h2([], [html.text("Uptown")]),
     keyed.ul([attribute.class("arrival-list")], uptown),
@@ -97,6 +105,10 @@ pub fn model_decoder() -> decode.Decoder(Model) {
   use name <- decode.field("name", decode.string)
   use last_updated <- decode.field("last_updated", timestamp_json.decoder())
   use transfers <- decode.field("transfers", decode.list(transfer_decoder()))
+  use alerted_routes <- decode.field(
+    "alerted_routes",
+    decode.list(route_bullet.decoder()),
+  )
   use alert_summary <- decode.field("alert_summary", decode.string)
   use highlighted_train <- decode.field(
     "highlighted_train",
@@ -110,6 +122,7 @@ pub fn model_decoder() -> decode.Decoder(Model) {
     name:,
     last_updated:,
     transfers:,
+    alerted_routes:,
     alert_summary:,
     uptown:,
     downtown:,
@@ -124,6 +137,7 @@ pub fn model_to_json(model: Model) -> json.Json {
     name:,
     last_updated:,
     transfers:,
+    alerted_routes:,
     alert_summary:,
     uptown:,
     downtown:,
@@ -137,6 +151,7 @@ pub fn model_to_json(model: Model) -> json.Json {
     #("name", json.string(name)),
     #("last_updated", timestamp_json.to_json(last_updated)),
     #("transfers", json.array(transfers, transfer_to_json)),
+    #("alerted_routes", json.array(alerted_routes, route_bullet.to_json)),
     #("alert_summary", json.string(alert_summary)),
     #(
       "highlighted_train",

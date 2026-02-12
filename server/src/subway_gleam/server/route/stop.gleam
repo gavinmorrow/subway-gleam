@@ -110,6 +110,14 @@ pub fn model(
   let routes = set.union(of: routes, and: rt.routes_arriving(gtfs, at: stop_id))
 
   let alerts = filter_alerts(gtfs, routes, stop_id)
+  let alerted_routes =
+    list.fold(over: alerts, from: set.new(), with: fn(acc, alert) {
+      set.union(of: acc, and: rt.routes_in_alert(alert))
+    })
+    |> set.map(st.route_data(in: state.schedule, for: _))
+    |> set.to_list
+    |> list.sort(by: fn(a, b) { int.compare(a.sort_order, b.sort_order) })
+    |> list.map(route_bullet.from_route_data)
   let alert_summary =
     alerts
     |> list.map(fn(alert) { option.unwrap(alert.alert_type, or: "Alert") })
@@ -143,6 +151,7 @@ pub fn model(
     name: stop.name,
     last_updated:,
     transfers:,
+    alerted_routes:,
     alert_summary:,
     uptown:,
     downtown:,

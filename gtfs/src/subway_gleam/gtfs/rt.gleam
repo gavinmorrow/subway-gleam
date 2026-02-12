@@ -299,3 +299,15 @@ pub fn routes_arriving(gtfs: Data, at stop: st.StopId) -> set.Set(st.Route) {
     }
   })
 }
+
+pub fn routes_in_alert(alert: Alert) -> set.Set(st.Route) {
+  use acc, target <- list.fold(over: alert.targets, from: set.new())
+
+  let gtfs_rt_nyct.EntitySelector(route_id:, ..) = target
+  let route_id = option.to_result(route_id, "")
+
+  case result.try(route_id, st.parse_route) {
+    Ok(route) -> set.insert(route, into: acc)
+    Error(_) -> acc
+  }
+}
