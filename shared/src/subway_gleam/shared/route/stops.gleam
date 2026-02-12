@@ -1,30 +1,55 @@
 import gleam/dynamic/decode
 import gleam/int
 import gleam/json
+import gleam/list
 import gleam/option
 import lustre/element
 import lustre/element/html
+import subway_gleam/shared/ffi/geolocation
 
 import subway_gleam/gtfs/st
 
 pub type Model {
-  Model(all_stops: List(st.Stop(Nil)))
+  Model(
+    all_stops: List(st.Stop(Nil)),
+    cur_position: option.Option(geolocation.Position),
+  )
 }
 
 pub fn view(model: Model) -> element.Element(msg) {
-  let Model(all_stops:) = model
+  let Model(all_stops:, cur_position:) = model
 
-  html.div([], [])
+  let stops_nearby =
+    option.map(cur_position, fn(pos) {
+      all_stops
+      |> list.filter(keeping: stop_is_nearby(_, pos:))
+      |> list.map(stop_li)
+    })
+
+  html.div([], [
+    html.h1([], [html.text("Stops Nearby")]),
+  ])
+}
+
+fn stop_li(stop: st.Stop(Nil)) -> element.Element(msg) {
+  todo
+}
+
+fn stop_is_nearby(stop: st.Stop(Nil), pos pos: geolocation.Position) -> Bool {
+  // TODO: account for pos accuracy
+  let delta_lat = stop.lat -. pos.latitude
+  let delta_lon = stop.lon -. pos.longitude
+  let distance = todo
 }
 
 pub fn model_decoder() -> decode.Decoder(Model) {
   use all_stops <- decode.field("all_stops", decode.list(of: stop_decoder()))
 
-  Model(all_stops:) |> decode.success
+  Model(all_stops:, cur_position: option.None) |> decode.success
 }
 
 pub fn model_to_json(model: Model) -> json.Json {
-  let Model(all_stops:) = model
+  let Model(all_stops:, cur_position: _) = model
   json.object([#("all_stops", json.array(from: all_stops, of: stop_to_json))])
 }
 

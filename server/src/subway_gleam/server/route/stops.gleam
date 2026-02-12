@@ -24,7 +24,7 @@ pub fn stops(req: wisp.Request, state: state.State) -> wisp.Response {
       }
     })
 
-  let model = stops.Model(all_stops:)
+  let model = stops.Model(all_stops:, cur_position: option.None)
 
   let head = [
     html.title([], "Stops"),
