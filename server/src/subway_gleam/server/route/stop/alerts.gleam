@@ -4,6 +4,7 @@ import gleam/result
 import gleam/set
 import lustre/attribute
 import lustre/element/html
+import subway_gleam/gtfs/rt
 import subway_gleam/shared/util
 import wisp
 
@@ -38,12 +39,19 @@ pub fn alerts(
     |> result.unwrap(or: set.new())
   let route =
     route_id |> option.to_result(Nil) |> result.try(st.route_id_long_to_route)
+
+  let gtfs_actor.Data(current: gtfs, last_updated:) = state.fetch_gtfs(state)
+
+  // Add in alerts from arrivals.
+  // Needed b/c if a train is rerouted then alerts from that train should be
+  // shown at this stop.
+  let all_routes =
+    set.union(of: all_routes, and: rt.routes_arriving(gtfs, at: stop_id))
+
   let routes = case route {
     Ok(route) -> set.new() |> set.insert(route)
     Error(Nil) -> all_routes
   }
-
-  let gtfs_actor.Data(current: gtfs, last_updated:) = state.fetch_gtfs(state)
 
   let alerts = stop.filter_alerts(gtfs, routes, stop_id)
   let all_routes =

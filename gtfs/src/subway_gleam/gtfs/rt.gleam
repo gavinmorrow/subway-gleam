@@ -4,6 +4,7 @@ import gleam/list
 import gleam/option
 import gleam/pair
 import gleam/result
+import gleam/set
 import gleam/time/duration
 import gleam/time/timestamp
 import gtfs_rt_nyct
@@ -280,4 +281,21 @@ fn parse_trip_update(
     Error(Nil) -> acc
     Ok(train_stopping) -> [train_stopping, ..acc]
   }
+}
+
+/// Extracts the routes of all trains in the arrivals list for a given stop.
+pub fn routes_arriving(gtfs: Data, at stop: st.StopId) -> set.Set(st.Route) {
+  let arrivals =
+    gtfs.arrivals
+    |> dict.get(stop)
+    |> result.unwrap(or: [])
+
+  list.fold(over: arrivals, from: set.new(), with: fn(acc, arrival) {
+    case st.parse_route(arrival.trip.route_id) {
+      Ok(route) -> set.insert(route, into: acc)
+      // If the route is unknown/invalid, don't bother adding it
+      // This is best-effort
+      Error(_) -> acc
+    }
+  })
 }

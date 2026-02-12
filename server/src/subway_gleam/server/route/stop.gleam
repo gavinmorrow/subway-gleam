@@ -104,6 +104,11 @@ pub fn model(
 
   let gtfs_actor.Data(current: gtfs, last_updated:) = state.fetch_gtfs(state)
 
+  // Add in alerts from arrivals.
+  // Needed b/c if a train is rerouted then alerts from that train should be
+  // shown at this stop.
+  let routes = set.union(of: routes, and: rt.routes_arriving(gtfs, at: stop_id))
+
   let alerts = filter_alerts(gtfs, routes, stop_id)
   let alert_summary =
     alerts
