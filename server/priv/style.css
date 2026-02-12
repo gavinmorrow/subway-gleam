@@ -6,6 +6,7 @@
   --color-text: #eee;
 
   --bullet-size: 1.5em;
+  --bullet-text-height: 1em;
 }
 
 a {
@@ -48,7 +49,7 @@ body {
       padding-left: 0;
     }
     .route-bullet {
-      margin-top: calc(var(--padding) / 2);
+      margin-top: calc(var(--padding) / -2);
       margin-left: calc(var(--padding) / 2);
       flex-shrink: 0;
     }
@@ -79,7 +80,7 @@ body {
     content: "";
     width: var(--bullet-size);
     height: var(--bullet-size);
-    top: calc(-1 * var(--bullet-size) / 6);
+    top: calc((var(--bullet-text-height) - var(--bullet-size)) / 2);
     left: 0;
     z-index: -1;
     border-radius: 100%;
@@ -92,17 +93,17 @@ body {
     top: 0;
     /* Why does this work? I have no clue. But it really seems to. */
     /* Needed to center the diamond under the text */
-    left: calc(1em / sqrt(2) / 3);
+    left: calc(1em / sqrt(2) / 3 - 0.025em);
   }
   z-index: 0;
 
   display: inline-block;
-  padding: 0.1em;
-  margin: 0.1em;
+  padding-top: 0.1em;
+  /* margin: 0.1em; */
   width: var(--bullet-size);
-  height: var(--bullet-size);
+  height: var(--bullet-text-height);
   min-width: var(--bullet-size);
-  min-height: var(--bullet-size);
+  min-height: var(--bullet-text-height);
   box-sizing: border-box;
 
   text-align: center;
@@ -128,11 +129,6 @@ body {
   padding: 0 var(--padding);
   margin: 0 calc(var(--padding) / 2);
   border-radius: var(--height);
-
-  .route-bullet {
-    margin: 0;
-    margin-top: calc(var(--bullet-size) / 3);
-  }
 
   &:is(a) {
     &:hover,

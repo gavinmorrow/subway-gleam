@@ -2,7 +2,7 @@ import gleam/time/timestamp
 
 pub const use_local_st: Bool = True
 
-pub const use_local_rt: Bool = False
+pub const use_local_rt: Bool = True
 
 pub const save_fetched_st: Bool = False
 

@@ -1,11 +1,13 @@
 #! /bin/sh
 
-pushd ./client
+if ! [ "$1" = "--no-client" ]; then
+  pushd ./client
 
-gleam run -m lustre/dev build subway_gleam/client/stop
-gleam run -m lustre/dev build subway_gleam/client/train
+  gleam run -m lustre/dev build subway_gleam/client/stop
+  gleam run -m lustre/dev build subway_gleam/client/train
 
-popd
+  popd
+fi
 
 
 pushd ./server
