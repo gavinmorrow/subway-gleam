@@ -1,6 +1,8 @@
+import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option
+import gleam/result
 import gleam/set
 import gleam/time/duration
 import gleam/time/timestamp
@@ -50,7 +52,11 @@ pub fn view(model: Model) -> Element(msg) {
     ])
   }
 
-  let alerts_list = list.map(alerts, alert_detail(_, cur_time))
+  let route_datas =
+    set.fold(over: all_routes, from: dict.new(), with: fn(acc, route) {
+      dict.insert(route, for: route.id, into: acc)
+    })
+  let alerts_list = list.map(alerts, alert_detail(_, cur_time, route_datas))
   let alerts_list = case list.is_empty(alerts) {
     True -> html.p([], [html.text("Woah...no alerts for this line!")])
     False -> html.ul([attribute.class("alerts")], alerts_list)
@@ -81,6 +87,7 @@ pub type AlertDetail {
 fn alert_detail(
   alert: rt.Alert,
   cur_time: timestamp.Timestamp,
+  route_datas: dict.Dict(st.Route, st.RouteData),
 ) -> element.Element(msg) {
   let rt.Alert(
     id:,
@@ -96,6 +103,13 @@ fn alert_detail(
     human_readable_active_period:,
     clone_id: _,
   ) = alert
+
+  let alerted_routes =
+    element.fragment({
+      use route <- list.filter_map(rt.routes_in_alert(alert) |> set.to_list)
+      use data <- result.map(dict.get(route_datas, route))
+      data |> route_bullet.from_route_data |> route_bullet
+    })
 
   let alert_type = alert_type |> option.unwrap(or: "Alert") |> html.text
 
@@ -123,7 +137,7 @@ fn alert_detail(
   let alert_id = html.p([attribute.class("alert-id")], [html.text(id)])
 
   html.details([attribute.class("alert")], [
-    html.summary([], [alert_type]),
+    html.summary([], [alerted_routes, alert_type]),
     header,
     active_period_or_last_updated,
     html.hr([]),
