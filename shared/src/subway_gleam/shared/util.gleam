@@ -23,10 +23,6 @@ pub fn min_from(
   |> float.round
 }
 
-pub fn min_from_now(time: timestamp.Timestamp) -> Int {
-  time |> min_from(epoch: current_time())
-}
-
 // See <https://github.com/gleam-lang/time/issues/41>
 pub fn timestamp_subtract(
   timestamp: timestamp.Timestamp,
