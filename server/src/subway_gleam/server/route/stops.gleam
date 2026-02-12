@@ -1,5 +1,9 @@
+import gleam/dict
+import gleam/list
+import gleam/option
 import lustre/attribute
 import lustre/element/html
+import subway_gleam/gtfs/st
 import wisp
 
 import subway_gleam/server/hydration_scripts.{hydration_scripts}
@@ -10,7 +14,17 @@ import subway_gleam/shared/route/stops
 pub fn stops(req: wisp.Request, state: state.State) -> wisp.Response {
   use _req <- lustre_middleware.lustre_res(req)
 
-  let model = stops.Model
+  let all_stops =
+    state.schedule.stops
+    |> dict.values
+    |> list.filter_map(fn(stop) {
+      case stop.direction {
+        option.Some(_) -> Error(Nil)
+        option.None -> Ok(st.Stop(..stop, direction: Nil))
+      }
+    })
+
+  let model = stops.Model(all_stops:)
 
   let head = [
     html.title([], "Stops"),
