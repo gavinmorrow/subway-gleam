@@ -20,7 +20,8 @@ body {
 }
 
 .arrival-list,
-.stops-list {
+.stops-list,
+.stops-nearby-list {
   list-style: none;
   padding: 0;
 

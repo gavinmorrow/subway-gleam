@@ -1,26 +1,33 @@
+import gleam/dict
 import gleam/dynamic/decode
 import gleam/float
 import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option
+import gleam/result
+import lustre/attribute
 import lustre/element
 import lustre/element/html
+import lustre/element/keyed
+
+import subway_gleam/gtfs/st
+import subway_gleam/shared/component/route_bullet
 import subway_gleam/shared/ffi/geolocation
 import subway_gleam/shared/util
 import subway_gleam/shared/util/haversine
-
-import subway_gleam/gtfs/st
+import subway_gleam/shared/util/stop_id_json
 
 pub type Model {
   Model(
     all_stops: List(st.Stop(Nil)),
+    stop_routes: dict.Dict(st.StopId, List(route_bullet.RouteBullet)),
     cur_position: option.Option(geolocation.Position),
   )
 }
 
 pub fn view(model: Model) -> element.Element(msg) {
-  let Model(all_stops:, cur_position:) = model
+  let Model(all_stops:, stop_routes:, cur_position:) = model
 
   // DEBUG
   let cur_position =
@@ -40,18 +47,38 @@ pub fn view(model: Model) -> element.Element(msg) {
       |> list.sort(by: fn(a, b) {
         float.compare(stop_distance(a, pos:), with: stop_distance(b, pos:))
       })
-      |> list.map(stop_li)
+      |> list.map(fn(stop) {
+        let routes = stop_routes |> dict.get(stop.id) |> result.unwrap(or: [])
+        stop_li(stop, routes)
+      })
     })
   let stops_nearby = case stops_nearby {
-    option.Some(lis) -> html.li([], lis)
+    option.Some(lis) -> keyed.ol([attribute.class("stops-nearby-list")], lis)
     option.None -> html.p([], [html.text("No stops nearby.")])
   }
 
   html.div([], [html.h1([], [html.text("Stops Nearby")]), stops_nearby])
 }
 
-fn stop_li(stop: st.Stop(Nil)) -> element.Element(msg) {
-  html.li([], [html.text(stop.name)])
+fn stop_li(
+  stop: st.Stop(Nil),
+  routes: List(route_bullet.RouteBullet),
+) -> #(String, element.Element(msg)) {
+  let id = stop.id |> st.stop_id_to_string(option.None)
+  let url = "/stop/" <> id
+  let routes =
+    list.map(routes, route_bullet.route_bullet)
+    |> html.div([], _)
+
+  #(
+    id,
+    html.li([], [
+      html.a([attribute.href(url)], [
+        html.text(stop.name),
+        routes,
+      ]),
+    ]),
+  )
 }
 
 /// The distance between a stop and a position, in meters.
@@ -67,13 +94,26 @@ fn stop_distance(stop: st.Stop(Nil), pos pos: geolocation.Position) -> Float {
 
 pub fn model_decoder() -> decode.Decoder(Model) {
   use all_stops <- decode.field("all_stops", decode.list(of: stop_decoder()))
+  use stop_routes <- decode.field(
+    "stop_routes",
+    decode.dict(stop_id_json.decoder(), decode.list(of: route_bullet.decoder())),
+  )
 
-  Model(all_stops:, cur_position: option.None) |> decode.success
+  Model(all_stops:, stop_routes:, cur_position: option.None) |> decode.success
 }
 
 pub fn model_to_json(model: Model) -> json.Json {
-  let Model(all_stops:, cur_position: _) = model
-  json.object([#("all_stops", json.array(from: all_stops, of: stop_to_json))])
+  let Model(all_stops:, stop_routes:, cur_position: _) = model
+  json.object([
+    #("all_stops", json.array(from: all_stops, of: stop_to_json)),
+    #(
+      "stop_routes",
+      json.dict(stop_routes, stop_id_json.to_dict_key, json.array(
+        _,
+        of: route_bullet.to_json,
+      )),
+    ),
+  ])
 }
 
 fn stop_decoder() -> decode.Decoder(st.Stop(Nil)) {
