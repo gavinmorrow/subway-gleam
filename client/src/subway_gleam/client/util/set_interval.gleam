@@ -2,6 +2,7 @@ import gleam/time/duration
 import gleam/time/timestamp
 import lustre/effect.{type Effect}
 import plinth/javascript/global
+import subway_gleam/client/ffi/time_zone
 
 import subway_gleam/shared/util
 
@@ -20,10 +21,16 @@ pub fn set_interval(
   timer(timer_id)
 }
 
-pub fn update_time(msg: fn(timestamp.Timestamp) -> msg) -> Effect(msg) {
+pub fn update_time(
+  msg: fn(timestamp.Timestamp, Result(duration.Duration, Nil)) -> msg,
+) -> Effect(msg) {
   set_interval(
-    every: duration.seconds(15),
-    do: fn(dispatch) { dispatch(msg(util.current_time())) },
+    every: duration.seconds(10),
+    do: fn(dispatch) {
+      let cur_time = util.current_time()
+      let time_zone_offset = time_zone.new_york_offset(at: cur_time)
+      dispatch(msg(cur_time, time_zone_offset))
+    },
     timer: fn(_) { Nil },
   )
 }

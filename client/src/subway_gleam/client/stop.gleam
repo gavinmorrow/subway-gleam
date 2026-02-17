@@ -1,5 +1,6 @@
 import gleam/json
 import gleam/result
+import gleam/time/duration
 import gleam/time/timestamp
 import lustre
 import lustre/effect.{type Effect}
@@ -24,7 +25,8 @@ pub fn main() -> Result(lustre.Runtime(Msg), lustre.Error) {
 
 pub type Msg {
   EventSource(lustre_event_source.Message)
-  UpdateTime(timestamp.Timestamp)
+  /// Update the current timestamp and time zone offset
+  UpdateTime(timestamp.Timestamp, Result(duration.Duration, Nil))
 }
 
 fn init(flags: Model) -> #(Model, Effect(Msg)) {
@@ -49,6 +51,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           highlighted_train: _,
           event_source: _,
           cur_time: _,
+          time_zone_offset: _,
         )) -> #(
           Model(
             ..model,
@@ -82,6 +85,13 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       effect.none(),
     )
 
-    UpdateTime(cur_time) -> #(Model(..model, cur_time:), effect.none())
+    UpdateTime(cur_time, time_zone_offset) -> #(
+      Model(
+        ..model,
+        cur_time:,
+        time_zone_offset: result.or(time_zone_offset, model.time_zone_offset),
+      ),
+      effect.none(),
+    )
   }
 }

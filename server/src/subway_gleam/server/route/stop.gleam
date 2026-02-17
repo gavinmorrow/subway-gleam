@@ -19,6 +19,7 @@ import subway_gleam/server/hydration_scripts.{hydration_scripts}
 import subway_gleam/server/lustre_middleware.{Document, try_lustre_res}
 import subway_gleam/server/state
 import subway_gleam/server/state/gtfs_actor
+import subway_gleam/server/time_zone
 import subway_gleam/shared/component/route_bullet
 import subway_gleam/shared/route/stop
 import subway_gleam/shared/util
@@ -147,6 +148,7 @@ pub fn model(
   // let uptown = uptown |> list.take(from: _, up_to: 10)
   // let downtown = downtown |> list.take(from: _, up_to: 10)
 
+  let cur_time = util.current_time()
   Ok(stop.Model(
     name: stop.name,
     last_updated:,
@@ -157,7 +159,8 @@ pub fn model(
     downtown:,
     highlighted_train:,
     event_source: live_status.Unavailable,
-    cur_time: util.current_time(),
+    cur_time:,
+    time_zone_offset: time_zone.new_york_offset(at: cur_time),
   ))
 }
 

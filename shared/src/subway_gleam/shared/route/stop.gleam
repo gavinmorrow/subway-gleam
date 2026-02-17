@@ -4,15 +4,17 @@ import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option
+import gleam/pair
 import gleam/result
+import gleam/string
 import gleam/time/duration
 import gleam/time/timestamp
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre/element/keyed
-import subway_gleam/gtfs/rt
 
+import subway_gleam/gtfs/rt
 import subway_gleam/gtfs/st
 import subway_gleam/shared/component/route_bullet.{
   type RouteBullet, route_bullet,
@@ -20,6 +22,7 @@ import subway_gleam/shared/component/route_bullet.{
 import subway_gleam/shared/util
 import subway_gleam/shared/util/live_status.{type LiveStatus}
 import subway_gleam/shared/util/stop_id_json
+import subway_gleam/shared/util/time_zone_offset_json
 import subway_gleam/shared/util/timestamp_json
 
 pub type Model {
@@ -34,6 +37,7 @@ pub type Model {
     highlighted_train: option.Option(rt.TrainId),
     event_source: LiveStatus,
     cur_time: timestamp.Timestamp,
+    time_zone_offset: Result(duration.Duration, Nil),
   )
 }
 
@@ -49,6 +53,7 @@ pub fn view(model: Model) -> Element(msg) {
     highlighted_train:,
     event_source:,
     cur_time:,
+    time_zone_offset:,
   ) = model
 
   let alerted_routes =
@@ -65,9 +70,19 @@ pub fn view(model: Model) -> Element(msg) {
       )
     })
   let uptown =
-    list.filter_map(uptown, arrival_li(_, highlighted_train, cur_time))
+    list.filter_map(uptown, arrival_li(
+      for: _,
+      highlighting: highlighted_train,
+      at: cur_time,
+      time_offset_by: time_zone_offset,
+    ))
   let downtown =
-    list.filter_map(downtown, arrival_li(_, highlighted_train, cur_time))
+    list.filter_map(downtown, arrival_li(
+      for: _,
+      highlighting: highlighted_train,
+      at: cur_time,
+      time_offset_by: time_zone_offset,
+    ))
 
   let live_status = case event_source {
     live_status.Connecting(_) -> element.text("Conecting...")
@@ -117,6 +132,10 @@ pub fn model_decoder() -> decode.Decoder(Model) {
   use uptown <- decode.field("uptown", decode.list(arrival_decoder()))
   use downtown <- decode.field("downtown", decode.list(arrival_decoder()))
   use cur_time <- decode.field("cur_time", timestamp_json.decoder())
+  use time_zone_offset <- decode.field(
+    "time_zone_offset",
+    time_zone_offset_json.decoder(),
+  )
 
   decode.success(Model(
     name:,
@@ -129,6 +148,7 @@ pub fn model_decoder() -> decode.Decoder(Model) {
     highlighted_train:,
     event_source: live_status.Unavailable,
     cur_time:,
+    time_zone_offset:,
   ))
 }
 
@@ -145,6 +165,7 @@ pub fn model_to_json(model: Model) -> json.Json {
     // Can't encode an EventSource
     event_source: _,
     cur_time:,
+    time_zone_offset:,
   ) = model
 
   json.object([
@@ -162,6 +183,7 @@ pub fn model_to_json(model: Model) -> json.Json {
     #("uptown", json.array(uptown, arrival_to_json)),
     #("downtown", json.array(downtown, arrival_to_json)),
     #("cur_time", timestamp_json.to_json(cur_time)),
+    #("time_zone_offset", time_zone_offset_json.to_json(time_zone_offset)),
   ])
 }
 
@@ -229,9 +251,10 @@ fn arrival_to_json(arrival: Arrival) -> json.Json {
 }
 
 fn arrival_li(
-  arrival: Arrival,
-  highlighted_train: option.Option(rt.TrainId),
-  cur_time: timestamp.Timestamp,
+  for arrival: Arrival,
+  highlighting highlighted_train: option.Option(rt.TrainId),
+  at cur_time: timestamp.Timestamp,
+  time_offset_by time_zone_offset: Result(duration.Duration, Nil),
 ) -> Result(#(String, Element(msg)), Nil) {
   let Arrival(train_id:, train_url:, route:, headsign:, time:) = arrival
 
@@ -243,6 +266,13 @@ fn arrival_li(
     result.map(headsign, fn(headsign) { html.span([], [html.text(headsign)]) })
 
   let is_highlighted = train_id == highlighted_train
+
+  let time_of_day =
+    result.map(time_zone_offset, fn(time_zone_offset) {
+      time
+      |> timestamp.to_calendar(time_zone_offset)
+      |> pair.second
+    })
 
   #(
     arrival.train_id
@@ -258,14 +288,53 @@ fn arrival_li(
         [
           route_bullet(route),
           headsign |> result.unwrap(or: element.none()),
-          html.span([], [
-            html.text(
-              time
-              |> util.min_from(cur_time)
-              |> int.to_string
-              <> "min",
-            ),
-          ]),
+          html.div(
+            [
+              // TODO: move to .css
+              attribute.styles([
+                #("display", "flex"),
+                #("flex-direction", "row"),
+                #("gap", "0.5em"),
+              ]),
+            ],
+            // TODO: make component so that other views w a countdown can share?
+            [
+              html.span([], [
+                html.text(
+                  time
+                  |> util.min_from(cur_time)
+                  |> int.to_string
+                  <> "min",
+                ),
+              ]),
+              case time_of_day {
+                Ok(time_of_day) -> {
+                  // TODO: is <pre> the right element? should this be smth in css?
+                  // TODO: make styled dimmer
+                  html.pre([], [
+                    html.text(
+                      time_of_day.hours
+                      |> int.to_string
+                      |> string.pad_start(to: 2, with: "0"),
+                    ),
+                    html.text(":"),
+                    html.text(
+                      time_of_day.minutes
+                      |> int.to_string
+                      |> string.pad_start(to: 2, with: "0"),
+                    ),
+                    html.text(case time_of_day.seconds {
+                      s if s > 30 -> "+"
+                      _ -> " "
+                    }),
+                  ])
+                }
+                // Don't show the time of day if the time zone offset can't
+                // be determined
+                Error(Nil) -> element.none()
+              },
+            ],
+          ),
         ],
       ),
     ]),
