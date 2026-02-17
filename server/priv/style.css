@@ -6,7 +6,7 @@
   --color-text: #eee;
 
   --bullet-size: 1.5em;
-  --bullet-text-height: 1em;
+  --bullet-text-height: 1lh;
 }
 
 a {
@@ -89,12 +89,11 @@ body {
   &.bullet-diamond::before {
     border-radius: 0;
     transform: rotate(45deg);
-    width: calc(var(--bullet-size) / sqrt(2));
-    height: calc(var(--bullet-size) / sqrt(2));
-    top: 0;
-    /* Why does this work? I have no clue. But it really seems to. */
-    /* Needed to center the diamond under the text */
-    left: calc(1em / sqrt(2) / 3 - 0.025em);
+    --size: calc(var(--bullet-size) / sqrt(2));
+    width: var(--size);
+    height: var(--size);
+    top: calc((var(--bullet-text-height) - var(--size)) / 2);
+    left: calc((var(--bullet-size) - var(--size)) / 2);
   }
   z-index: 0;
 
