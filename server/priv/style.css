@@ -6,7 +6,6 @@
   --color-text: #eee;
 
   --bullet-size: 1.5em;
-  --bullet-text-height: 1lh;
 }
 
 a {
@@ -79,32 +78,28 @@ body {
     position: absolute;
     background-color: var(--color-bullet-bg);
     content: "";
-    width: var(--bullet-size);
-    height: var(--bullet-size);
-    top: calc((var(--bullet-text-height) - var(--bullet-size)) / 2);
-    left: 0;
     z-index: -1;
     border-radius: 100%;
+    /* Have a variable b/c the diamond bullet has a different value for this */
+    --size: var(--bullet-size);
+
+    width: var(--size);
+    height: var(--size);
+    top: calc((1lh - var(--size)) / 2);
+    left: calc((var(--bullet-size) - var(--size)) / 2);
   }
   &.bullet-diamond::before {
     border-radius: 0;
     transform: rotate(45deg);
     --size: calc(var(--bullet-size) / sqrt(2));
-    width: var(--size);
-    height: var(--size);
-    top: calc((var(--bullet-text-height) - var(--size)) / 2);
-    left: calc((var(--bullet-size) - var(--size)) / 2);
   }
   z-index: 0;
 
   display: inline-block;
-  padding-top: 0.1em;
-  /* margin: 0.1em; */
-  width: var(--bullet-size);
-  height: var(--bullet-text-height);
-  min-width: var(--bullet-size);
-  min-height: var(--bullet-text-height);
   box-sizing: border-box;
+  padding-top: 0.1em;
+  width: var(--bullet-size);
+  height: 1lh;
 
   text-align: center;
   vertical-align: baseline;
@@ -112,6 +107,7 @@ body {
   font-family: "Helvetica", sans-serif;
   font-weight: normal;
   text-decoration: none;
+  line-height: var(--bullet-size);
 }
 
 .bullet-group {
