@@ -4,9 +4,7 @@ import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option
-import gleam/pair
 import gleam/result
-import gleam/string
 import gleam/time/duration
 import gleam/time/timestamp
 import lustre/attribute
@@ -16,6 +14,7 @@ import lustre/element/keyed
 
 import subway_gleam/gtfs/rt
 import subway_gleam/gtfs/st
+import subway_gleam/shared/component/arrival_time.{arrival_time}
 import subway_gleam/shared/component/route_bullet.{
   type RouteBullet, route_bullet,
 }
@@ -267,13 +266,6 @@ fn arrival_li(
 
   let is_highlighted = train_id == highlighted_train
 
-  let time_of_day =
-    result.map(time_zone_offset, fn(time_zone_offset) {
-      time
-      |> timestamp.to_calendar(time_zone_offset)
-      |> pair.second
-    })
-
   #(
     arrival.train_id
       |> option.map(rt.train_id_to_string)
@@ -288,52 +280,10 @@ fn arrival_li(
         [
           route_bullet(route),
           headsign |> result.unwrap(or: element.none()),
-          html.div(
-            [
-              // TODO: move to .css
-              attribute.styles([
-                #("display", "flex"),
-                #("flex-direction", "row"),
-                #("gap", "0.5em"),
-              ]),
-            ],
-            // TODO: make component so that other views w a countdown can share?
-            [
-              html.span([], [
-                html.text(
-                  time
-                  |> util.min_from(cur_time)
-                  |> int.to_string
-                  <> "min",
-                ),
-              ]),
-              case time_of_day {
-                Ok(time_of_day) -> {
-                  // TODO: is <pre> the right element? should this be smth in css?
-                  // TODO: make styled dimmer
-                  html.pre([], [
-                    html.text(
-                      time_of_day.hours
-                      |> int.to_string
-                      |> string.pad_start(to: 2, with: "0"),
-                    ),
-                    html.text(":"),
-                    html.text(
-                      time_of_day.minutes
-                      |> int.to_string
-                      |> string.pad_start(to: 2, with: "0"),
-                    ),
-                    html.text(case time_of_day.seconds {
-                      s if s > 30 -> "+"
-                      _ -> " "
-                    }),
-                  ])
-                }
-                // Don't show the time of day if the time zone offset can't
-                // be determined
-                Error(Nil) -> element.none()
-              },
-            ],
+          arrival_time(
+            arriving_at: time,
+            cur_time:,
+            offset_by: time_zone_offset,
           ),
         ],
       ),
