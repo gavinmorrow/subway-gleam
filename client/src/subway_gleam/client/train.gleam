@@ -7,7 +7,6 @@ import lustre/effect.{type Effect}
 import lustre_event_source
 import plinth/browser/document
 import plinth/browser/element
-import subway_gleam/shared/component/arrival_time
 
 import subway_gleam/client/util/set_interval
 import subway_gleam/shared/route/train.{type Model, Model, view}
