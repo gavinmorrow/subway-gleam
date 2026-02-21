@@ -1,28 +1,37 @@
-import gleam/dict
-import gleam/int
 import gleam/list
 import gleam/option
-import gleam/result
 import gleam/set
-import gleam/time/duration
-import gleam/time/timestamp
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html
 
-import subway_gleam/gtfs/rt
+import subway_gleam/gtfs/rt/rich_text.{type RichText}
 import subway_gleam/gtfs/st
-import subway_gleam/shared/component/rich_text
+import subway_gleam/shared/component/last_updated
+import subway_gleam/shared/component/rich_text as rich_text_component
 import subway_gleam/shared/component/route_bullet.{route_bullet}
-import subway_gleam/shared/util
+import subway_gleam/shared/util/time.{type Time}
 
 pub type Model {
   Model(
     stop_name: String,
-    last_updated: timestamp.Timestamp,
+    last_updated: Time,
+    // TODO: don't actually need *all* routes. trim them down server-side
     all_routes: set.Set(st.RouteData),
-    alerts: List(rt.Alert),
-    cur_time: timestamp.Timestamp,
+    alerts: List(Alert),
+    cur_time: Time,
+  )
+}
+
+pub type Alert {
+  Alert(
+    id: String,
+    routes: set.Set(st.RouteData),
+    header: RichText,
+    description: option.Option(RichText),
+    updated: option.Option(Time),
+    alert_type: option.Option(String),
+    human_readable_active_period: option.Option(RichText),
   )
 }
 
@@ -52,11 +61,7 @@ pub fn view(model: Model) -> Element(msg) {
     ])
   }
 
-  let route_datas =
-    set.fold(over: all_routes, from: dict.new(), with: fn(acc, route) {
-      dict.insert(route, for: route.id, into: acc)
-    })
-  let alerts_list = list.map(alerts, alert_detail(_, cur_time, route_datas))
+  let alerts_list = list.map(alerts, alert_detail(_, cur_time))
   let alerts_list = case list.is_empty(alerts) {
     True -> html.p([], [html.text("Woah...no alerts for this line!")])
     False -> html.ul([attribute.class("alerts")], alerts_list)
@@ -66,12 +71,7 @@ pub fn view(model: Model) -> Element(msg) {
     html.h1([], [
       html.text(stop_name),
     ]),
-    html.aside([], [
-      html.text(
-        "Last updated "
-        <> { last_updated |> timestamp.to_rfc3339(duration.hours(-4)) },
-      ),
-    ]),
+    html.aside([], [last_updated.last_updated(at: last_updated, cur_time:)]),
     html.nav([], [
       html.a([attribute.href("../../")], [html.text("Back to arrivals")]),
     ]),
@@ -84,49 +84,40 @@ pub type AlertDetail {
   AlertDetail(alert_type: String)
 }
 
-fn alert_detail(
-  alert: rt.Alert,
-  cur_time: timestamp.Timestamp,
-  route_datas: dict.Dict(st.Route, st.RouteData),
-) -> element.Element(msg) {
-  let rt.Alert(
+fn alert_detail(alert: Alert, cur_time: Time) -> element.Element(msg) {
+  let Alert(
     id:,
-    active_periods: _,
-    targets: _,
+    routes:,
     header:,
     description:,
-    created: _,
     updated:,
     alert_type:,
-    station_alternatives: _,
-    display_before_active: _,
     human_readable_active_period:,
-    clone_id: _,
   ) = alert
 
   let alerted_routes =
+    // element.fragment({
+    //   use route <- list.filter_map(rt.routes_in_alert(alert) |> set.to_list)
+    //   use data <- result.map(dict.get(route_datas, route))
+    //   data |> route_bullet.from_route_data |> route_bullet
+    // })
     element.fragment({
-      use route <- list.filter_map(rt.routes_in_alert(alert) |> set.to_list)
-      use data <- result.map(dict.get(route_datas, route))
-      data |> route_bullet.from_route_data |> route_bullet
+      use route <- list.map(routes |> set.to_list)
+      route |> route_bullet.from_route_data |> route_bullet
     })
 
   let alert_type = alert_type |> option.unwrap(or: "Alert") |> html.text
 
-  let header = rich_text.as_html(header)
+  let header = rich_text_component.as_html(header)
   let description =
     description
-    |> option.map(rich_text.as_html)
+    |> option.map(rich_text_component.as_html)
     |> option.unwrap(or: element.none())
 
   let human_readable_active_period =
-    human_readable_active_period |> option.map(rich_text.as_html)
+    human_readable_active_period |> option.map(rich_text_component.as_html)
   let last_updated =
-    option.map(updated, fn(updated) {
-      let str =
-        updated |> util.min_from(cur_time) |> int.negate |> int.to_string
-      html.text("Last updated: " <> str <> "min ago")
-    })
+    option.map(updated, last_updated.last_updated(at: _, cur_time:))
   let active_period_or_last_updated =
     option.or(human_readable_active_period, last_updated)
     |> option.map(fn(elem) {
