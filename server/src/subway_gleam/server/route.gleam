@@ -1,3 +1,4 @@
+import lustre/attribute
 import lustre/element/html
 import wisp
 
@@ -11,7 +12,10 @@ import subway_gleam/server/route/train
 pub fn index(req: wisp.Request) -> wisp.Response {
   use _req <- lustre_res(req)
 
-  let body = [html.p([], [html.text("subways! yay!")])]
+  let body = [
+    html.p([], [html.text("subways! yay!")]),
+    html.a([attribute.href("/stops")], [html.text("stops nearby")]),
+  ]
   let res = wisp.response(200)
 
   #(Body(body:), res)
