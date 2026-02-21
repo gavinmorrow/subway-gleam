@@ -5,12 +5,12 @@ import gleam/json
 import gleam/list
 import gleam/option
 import gleam/result
-import gleam/time/duration
 import gleam/time/timestamp
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre/element/keyed
+import subway_gleam/shared/component/last_updated
 
 import subway_gleam/gtfs/rt
 import subway_gleam/gtfs/st
@@ -27,7 +27,7 @@ import subway_gleam/shared/util/timestamp_json
 pub type Model {
   Model(
     name: String,
-    last_updated: timestamp.Timestamp,
+    last_updated: Time,
     transfers: List(Transfer),
     alerted_routes: List(RouteBullet),
     alert_summary: String,
@@ -90,10 +90,7 @@ pub fn view(model: Model) -> Element(msg) {
       html.text(name),
     ]),
     html.aside([], [
-      html.text(
-        "Last updated "
-        <> { last_updated |> timestamp.to_rfc3339(duration.hours(-4)) },
-      ),
+      last_updated.last_updated(at: last_updated, cur_time:),
       html.br([]),
       live_status,
     ]),
@@ -113,7 +110,7 @@ pub fn view(model: Model) -> Element(msg) {
 
 pub fn model_decoder() -> decode.Decoder(Model) {
   use name <- decode.field("name", decode.string)
-  use last_updated <- decode.field("last_updated", timestamp_json.decoder())
+  use last_updated <- decode.field("last_updated", time.decoder())
   use transfers <- decode.field("transfers", decode.list(transfer_decoder()))
   use alerted_routes <- decode.field(
     "alerted_routes",
@@ -159,7 +156,7 @@ pub fn model_to_json(model: Model) -> json.Json {
 
   json.object([
     #("name", json.string(name)),
-    #("last_updated", timestamp_json.to_json(last_updated)),
+    #("last_updated", time.to_json(last_updated)),
     #("transfers", json.array(transfers, transfer_to_json)),
     #("alerted_routes", json.array(alerted_routes, route_bullet.to_json)),
     #("alert_summary", json.string(alert_summary)),

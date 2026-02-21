@@ -11,6 +11,7 @@ import gleam/time/timestamp
 import gleam/uri
 import lustre/attribute
 import lustre/element/html
+import subway_gleam/shared/util/time
 import wisp
 
 import subway_gleam/gtfs/rt
@@ -149,6 +150,8 @@ pub fn model(
   // let downtown = downtown |> list.take(from: _, up_to: 10)
 
   let cur_time = time_zone.now()
+  let last_updated =
+    time.Time(last_updated, time_zone.new_york_offset(at: last_updated))
 
   Ok(stop.Model(
     name: stop.name,
