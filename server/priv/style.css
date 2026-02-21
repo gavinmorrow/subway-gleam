@@ -16,6 +16,7 @@ html,
 body {
   background-color: var(--color-bg-0);
   color: var(--color-text);
+  font-family: system-ui;
 }
 
 .arrival-list,
@@ -27,7 +28,7 @@ body {
   li a {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: baseline;
 
     color: var(--color-text);
     text-decoration: none;
@@ -140,6 +141,7 @@ body {
   flex-direction: row;
   gap: 0.5em;
   height: 100%;
+  align-items: baseline;
 }
 
 .alerts {
