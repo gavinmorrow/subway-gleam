@@ -59,15 +59,12 @@ body {
     border-radius: var(--bullet-size);
 
     * {
-      /* Actual alignment of text vertically!! */
-      text-box: trim-both cap alphabetic;
-      @supports not (text-box: trim-both cap alphabetic) {
-        /* TODO: this is kinda hacky and probably font-dependent */
-        /* Does seem to be pretty close though */
-        line-height: 1;
-        margin-top: -0.05em;
-        margin-bottom: -0.25em;
-      }
+      /* TODO: this is kinda hacky and probably font-dependent */
+      /* Does seem to be pretty close though */
+      /* Take a look into text-box if more browsers support it */
+      line-height: 1;
+      margin-top: -0.05em;
+      margin-bottom: -0.25em;
     }
   }
 }
@@ -142,6 +139,11 @@ body {
   gap: 0.5em;
   height: 100%;
   align-items: baseline;
+
+  * {
+    margin: 0;
+    padding: 0;
+  }
 }
 
 .alerts {
