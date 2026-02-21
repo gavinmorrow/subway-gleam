@@ -9,7 +9,6 @@ import gleam/time/timestamp
 import gleam/uri
 import lustre/attribute
 import lustre/element/html
-import subway_gleam/shared/util
 import wisp
 
 import subway_gleam/gtfs/rt
@@ -18,6 +17,7 @@ import subway_gleam/server/hydration_scripts.{hydration_scripts}
 import subway_gleam/server/lustre_middleware.{Body, Document, try_lustre_res}
 import subway_gleam/server/state
 import subway_gleam/server/state/gtfs_actor
+import subway_gleam/server/time_zone
 import subway_gleam/shared/component/route_bullet
 import subway_gleam/shared/route/train
 import subway_gleam/shared/util/live_status
@@ -94,12 +94,14 @@ pub fn model(
       )
     })
 
+  let cur_time = time_zone.now()
+
   Ok(train.Model(
     last_updated:,
     stops:,
     highlighted_stop:,
     event_source: live_status.Unavailable,
-    cur_time: util.current_time(),
+    cur_time: cur_time,
   ))
 }
 

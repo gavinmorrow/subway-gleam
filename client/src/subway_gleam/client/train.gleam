@@ -7,6 +7,7 @@ import lustre/effect.{type Effect}
 import lustre_event_source
 import plinth/browser/document
 import plinth/browser/element
+import subway_gleam/shared/component/arrival_time
 
 import subway_gleam/client/util/set_interval
 import subway_gleam/shared/route/train.{type Model, Model, view}
@@ -66,9 +67,15 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       effect.none(),
     )
 
-    // TODO: add time zone offset handling
-    UpdateTime(cur_time, _time_zone_offset) -> #(
-      Model(..model, cur_time:),
+    UpdateTime(timestamp, time_zone_offset) -> #(
+      Model(
+        ..model,
+        cur_time: arrival_time.Time(
+          timestamp:,
+          time_zone_offset: time_zone_offset
+            |> result.or(model.cur_time.time_zone_offset),
+        ),
+      ),
       effect.none(),
     )
   }

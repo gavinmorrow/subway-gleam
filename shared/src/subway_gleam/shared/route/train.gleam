@@ -1,6 +1,5 @@
 import gleam/bool
 import gleam/dynamic/decode
-import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option
@@ -12,6 +11,7 @@ import lustre/element/html
 import lustre/element/keyed
 
 import subway_gleam/gtfs/st
+import subway_gleam/shared/component/arrival_time
 import subway_gleam/shared/component/route_bullet.{
   type RouteBullet, route_bullet,
 }
@@ -25,7 +25,7 @@ pub type Model {
     stops: List(Stop),
     highlighted_stop: option.Option(st.StopId),
     event_source: LiveStatus,
-    cur_time: timestamp.Timestamp,
+    cur_time: arrival_time.Time,
   )
 }
 
@@ -61,7 +61,7 @@ pub fn model_decoder() -> decode.Decoder(Model) {
     "highlighted_stop",
     decode.optional(decode.string |> decode.map(st.StopId)),
   )
-  use cur_time <- decode.field("cur_time", timestamp_json.decoder())
+  use cur_time <- decode.field("cur_time", arrival_time.time_decoder())
 
   decode.success(Model(
     last_updated:,
@@ -91,7 +91,7 @@ pub fn model_to_json(model: Model) -> json.Json {
         json.string(str)
       }),
     ),
-    #("cur_time", timestamp_json.to_json(cur_time)),
+    #("cur_time", arrival_time.time_to_json(cur_time)),
   ])
 }
 
@@ -134,11 +134,11 @@ fn stop_to_json(stop: Stop) -> json.Json {
 pub fn stop_li(
   stop: Stop,
   highlighted_stop: option.Option(st.StopId),
-  cur_time: timestamp.Timestamp,
+  cur_time: arrival_time.Time,
 ) -> Result(#(String, Element(msg)), Nil) {
   let Stop(id:, name:, stop_url:, transfers:, time:) = stop
 
-  let dt = util.min_from(time, epoch: cur_time)
+  let dt = util.min_from(time, epoch: cur_time.timestamp)
   use <- bool.guard(when: dt < 0, return: Error(Nil))
 
   let transfers = list.map(transfers, route_bullet)
@@ -155,11 +155,7 @@ pub fn stop_li(
         ],
         [
           html.span([], [html.text(name), ..transfers]),
-          html.span([], [
-            html.text(
-              time |> util.min_from(epoch: cur_time) |> int.to_string <> "min",
-            ),
-          ]),
+          arrival_time.arrival_time(arriving_at: time, cur_time:),
         ],
       ),
     ]),

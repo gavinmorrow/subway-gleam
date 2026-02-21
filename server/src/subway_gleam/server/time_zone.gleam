@@ -4,6 +4,9 @@ import gleam/time/timestamp.{type Timestamp}
 import tzif/database
 import tzif/tzcalendar
 
+import subway_gleam/shared/component/arrival_time
+import subway_gleam/shared/util
+
 pub fn new_york_offset(at time: Timestamp) -> Result(Duration, Nil) {
   use tz_db <- result.try(database.load_from_os())
   use tz <- result.map(
@@ -11,4 +14,12 @@ pub fn new_york_offset(at time: Timestamp) -> Result(Duration, Nil) {
     |> result.replace_error(Nil),
   )
   tz.offset
+}
+
+pub fn now() -> arrival_time.Time {
+  let timestamp = util.current_time()
+  arrival_time.Time(
+    timestamp:,
+    time_zone_offset: new_york_offset(at: timestamp),
+  )
 }

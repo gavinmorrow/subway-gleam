@@ -11,7 +11,6 @@ import gleam/time/timestamp
 import gleam/uri
 import lustre/attribute
 import lustre/element/html
-import subway_gleam/shared/component/arrival_time
 import wisp
 
 import subway_gleam/gtfs/rt
@@ -149,13 +148,7 @@ pub fn model(
   // let uptown = uptown |> list.take(from: _, up_to: 10)
   // let downtown = downtown |> list.take(from: _, up_to: 10)
 
-  let cur_time = {
-    let timestamp = util.current_time()
-    arrival_time.Time(
-      timestamp:,
-      time_zone_offset: time_zone.new_york_offset(at: timestamp),
-    )
-  }
+  let cur_time = time_zone.now()
 
   Ok(stop.Model(
     name: stop.name,
