@@ -247,7 +247,9 @@ fn arrival_li(
   use <- bool.guard(when: dt < 0, return: Error(Nil))
 
   let headsign =
-    result.map(headsign, fn(headsign) { html.span([], [html.text(headsign)]) })
+    result.map(headsign, fn(headsign) {
+      html.span([attribute.class("headsign")], [html.text(headsign)])
+    })
 
   let is_highlighted = train_id == highlighted_train
 

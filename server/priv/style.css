@@ -29,6 +29,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
+    gap: var(--margin);
 
     color: var(--color-text);
     text-decoration: none;
@@ -53,6 +54,10 @@ body {
       margin-top: calc(var(--padding) / -2);
       margin-left: calc(var(--padding) / 2);
       flex-shrink: 0;
+    }
+
+    .headsign {
+      flex-grow: 1;
     }
 
     margin: var(--margin) 0;
