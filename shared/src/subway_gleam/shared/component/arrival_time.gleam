@@ -8,6 +8,7 @@ import gleam/time/timestamp
 import lustre/attribute
 import lustre/element
 import lustre/element/html
+
 import subway_gleam/shared/util
 import subway_gleam/shared/util/time_zone_offset_json
 import subway_gleam/shared/util/timestamp_json
@@ -23,33 +24,23 @@ pub fn arrival_time(
   arriving_at time: timestamp.Timestamp,
   cur_time cur_time: Time,
 ) -> element.Element(msg) {
-  html.div(
-    [
-      // TODO: move to .css
-      attribute.styles([
-        #("display", "flex"),
-        #("flex-direction", "row"),
-        #("gap", "0.5em"),
-      ]),
-    ],
-    [
-      html.span([], [
-        html.text(relative_time(from: cur_time.timestamp, to: time)),
-      ]),
-      case cur_time.time_zone_offset {
-        Ok(time_zone_offset) -> {
-          // TODO: is <pre> the right element? should this be smth in css?
-          // TODO: make styled dimmer
-          html.pre([], [
-            html.text(time_of_day(at: time, offset_by: time_zone_offset)),
-          ])
-        }
-        // Don't show the time of day if the time zone offset can't
-        // be determined
-        Error(Nil) -> element.none()
-      },
-    ],
-  )
+  html.div([attribute.class("arrival-time")], [
+    html.span([], [
+      html.text(relative_time(from: cur_time.timestamp, to: time)),
+    ]),
+    case cur_time.time_zone_offset {
+      Ok(time_zone_offset) -> {
+        // TODO: is <pre> the right element? should this be smth in css?
+        // TODO: make styled dimmer
+        html.pre([], [
+          html.text(time_of_day(at: time, offset_by: time_zone_offset)),
+        ])
+      }
+      // Don't show the time of day if the time zone offset can't
+      // be determined
+      Error(Nil) -> element.none()
+    },
+  ])
 }
 
 pub fn time_decoder() -> decode.Decoder(Time) {

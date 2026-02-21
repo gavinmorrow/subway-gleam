@@ -135,6 +135,13 @@ body {
   }
 }
 
+.arrival-time {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5em;
+  height: 100%;
+}
+
 .alerts {
   display: flex;
   flex-direction: column;
