@@ -51,6 +51,10 @@ fn to_html(lustre_res: LustreRes(msg)) -> element.Element(msg) {
         attribute.rel("stylesheet"),
         attribute.href("/static/style.css"),
       ]),
+      html.link([
+        attribute.rel("manifest"),
+        attribute.href("/static/manifest.json"),
+      ]),
       ..head
     ]),
     html.body([], body),
