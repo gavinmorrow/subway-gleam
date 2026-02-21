@@ -167,6 +167,8 @@ pub fn model(
   ))
 }
 
+// TODO: do this processing for every alert as part of processing rt data.
+//       it adds slightly noticable lag to each request
 pub fn filter_alerts(
   gtfs: rt.Data,
   routes: set.Set(st.Route),
