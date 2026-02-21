@@ -21,6 +21,7 @@ import subway_gleam/shared/component/route_bullet.{
 import subway_gleam/shared/util
 import subway_gleam/shared/util/live_status.{type LiveStatus}
 import subway_gleam/shared/util/stop_id_json
+import subway_gleam/shared/util/time.{type Time}
 import subway_gleam/shared/util/timestamp_json
 
 pub type Model {
@@ -34,7 +35,7 @@ pub type Model {
     downtown: List(Arrival),
     highlighted_train: option.Option(rt.TrainId),
     event_source: LiveStatus,
-    cur_time: arrival_time.Time,
+    cur_time: Time,
   )
 }
 
@@ -125,7 +126,7 @@ pub fn model_decoder() -> decode.Decoder(Model) {
   )
   use uptown <- decode.field("uptown", decode.list(arrival_decoder()))
   use downtown <- decode.field("downtown", decode.list(arrival_decoder()))
-  use cur_time <- decode.field("cur_time", arrival_time.time_decoder())
+  use cur_time <- decode.field("cur_time", time.decoder())
 
   decode.success(Model(
     name:,
@@ -170,7 +171,7 @@ pub fn model_to_json(model: Model) -> json.Json {
     ),
     #("uptown", json.array(uptown, arrival_to_json)),
     #("downtown", json.array(downtown, arrival_to_json)),
-    #("cur_time", arrival_time.time_to_json(cur_time)),
+    #("cur_time", time.to_json(cur_time)),
   ])
 }
 
@@ -240,7 +241,7 @@ fn arrival_to_json(arrival: Arrival) -> json.Json {
 fn arrival_li(
   for arrival: Arrival,
   highlighting highlighted_train: option.Option(rt.TrainId),
-  at cur_time: arrival_time.Time,
+  at cur_time: Time,
 ) -> Result(#(String, Element(msg)), Nil) {
   let Arrival(train_id:, train_url:, route:, headsign:, time:) = arrival
 

@@ -1,6 +1,4 @@
-import gleam/dynamic/decode
 import gleam/int
-import gleam/json
 import gleam/pair
 import gleam/string
 import gleam/time/duration
@@ -10,15 +8,7 @@ import lustre/element
 import lustre/element/html
 
 import subway_gleam/shared/util
-import subway_gleam/shared/util/time_zone_offset_json
-import subway_gleam/shared/util/timestamp_json
-
-pub type Time {
-  Time(
-    timestamp: timestamp.Timestamp,
-    time_zone_offset: Result(duration.Duration, Nil),
-  )
-}
+import subway_gleam/shared/util/time.{type Time}
 
 pub fn arrival_time(
   arriving_at time: timestamp.Timestamp,
@@ -40,23 +30,6 @@ pub fn arrival_time(
       // be determined
       Error(Nil) -> element.none()
     },
-  ])
-}
-
-pub fn time_decoder() -> decode.Decoder(Time) {
-  use timestamp <- decode.field("timestamp", timestamp_json.decoder())
-  use time_zone_offset <- decode.field(
-    "time_zone_offset",
-    time_zone_offset_json.decoder(),
-  )
-  Time(timestamp:, time_zone_offset:) |> decode.success
-}
-
-pub fn time_to_json(time: Time) -> json.Json {
-  let Time(timestamp:, time_zone_offset:) = time
-  json.object([
-    #("timestamp", timestamp_json.to_json(timestamp)),
-    #("time_zone_offset", time_zone_offset_json.to_json(time_zone_offset)),
   ])
 }
 

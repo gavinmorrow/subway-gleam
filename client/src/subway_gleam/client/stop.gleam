@@ -12,6 +12,7 @@ import subway_gleam/client/util/set_interval
 import subway_gleam/shared/component/arrival_time
 import subway_gleam/shared/route/stop.{type Model, Model, view}
 import subway_gleam/shared/util/live_status.{live_status}
+import subway_gleam/shared/util/time.{Time}
 
 pub fn main() -> Result(lustre.Runtime(Msg), lustre.Error) {
   // TODO: handle errors: model not found, and invalid JSON
@@ -88,7 +89,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     UpdateTime(timestamp, time_zone_offset) -> #(
       Model(
         ..model,
-        cur_time: arrival_time.Time(
+        cur_time: Time(
           timestamp:,
           time_zone_offset: time_zone_offset
             |> result.or(model.cur_time.time_zone_offset),

@@ -17,6 +17,7 @@ import subway_gleam/shared/component/route_bullet.{
 }
 import subway_gleam/shared/util
 import subway_gleam/shared/util/live_status.{type LiveStatus}
+import subway_gleam/shared/util/time.{type Time}
 import subway_gleam/shared/util/timestamp_json
 
 pub type Model {
@@ -25,7 +26,7 @@ pub type Model {
     stops: List(Stop),
     highlighted_stop: option.Option(st.StopId),
     event_source: LiveStatus,
-    cur_time: arrival_time.Time,
+    cur_time: Time,
   )
 }
 
@@ -61,7 +62,7 @@ pub fn model_decoder() -> decode.Decoder(Model) {
     "highlighted_stop",
     decode.optional(decode.string |> decode.map(st.StopId)),
   )
-  use cur_time <- decode.field("cur_time", arrival_time.time_decoder())
+  use cur_time <- decode.field("cur_time", time.decoder())
 
   decode.success(Model(
     last_updated:,
@@ -91,7 +92,7 @@ pub fn model_to_json(model: Model) -> json.Json {
         json.string(str)
       }),
     ),
-    #("cur_time", arrival_time.time_to_json(cur_time)),
+    #("cur_time", time.to_json(cur_time)),
   ])
 }
 
@@ -134,7 +135,7 @@ fn stop_to_json(stop: Stop) -> json.Json {
 pub fn stop_li(
   stop: Stop,
   highlighted_stop: option.Option(st.StopId),
-  cur_time: arrival_time.Time,
+  cur_time: Time,
 ) -> Result(#(String, Element(msg)), Nil) {
   let Stop(id:, name:, stop_url:, transfers:, time:) = stop
 
