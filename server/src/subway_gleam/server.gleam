@@ -2,7 +2,6 @@ import gleam/erlang/process
 import gleam/http/request
 import gleam/http/response
 import gleam/option
-import gleam/otp/actor
 import gleam/result
 import mist
 import repeatedly
@@ -40,7 +39,7 @@ pub fn main() -> Nil {
   let state = state.State(priv_dir:, schedule:, gtfs_actor:)
 
   repeatedly.call(10 * 1000, Nil, fn(_state, _i) {
-    actor.send(state.gtfs_actor.data, gtfs_actor.Update)
+    gtfs_actor.update(state.gtfs_actor.data)
   })
 
   wisp.configure_logger()

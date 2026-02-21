@@ -20,7 +20,7 @@ pub type Data {
   Data(current: rt.Data, last_updated: timestamp.Timestamp)
 }
 
-pub type Message {
+pub opaque type Message {
   Get(process.Subject(Data))
   Update
   SetData(Result(Data, rt.FetchGtfsError))
@@ -76,6 +76,26 @@ fn handle_message(state: State, msg: Message) -> actor.Next(State, Message) {
         State(..state, watchers: set.delete(subj, from: state.watchers)),
       )
   }
+}
+
+pub fn get(self: Subject) -> Data {
+  actor.call(self, waiting: 100, sending: Get)
+}
+
+pub fn update(self: Subject) -> Nil {
+  actor.send(self, Update)
+}
+
+pub fn set_data(self: Subject, data: Result(Data, rt.FetchGtfsError)) -> Nil {
+  actor.send(self, SetData(data))
+}
+
+pub fn subscribe_watcher(self: Subject, watcher: process.Subject(Nil)) -> Nil {
+  actor.send(self, SubscribeWatcher(watcher))
+}
+
+pub fn unsubscribe_watcher(self: Subject, watcher: process.Subject(Nil)) -> Nil {
+  actor.send(self, UnsubscribeWatcher(watcher))
 }
 
 fn fetch_all_rt_feeds() -> Result(Data, rt.FetchGtfsError) {

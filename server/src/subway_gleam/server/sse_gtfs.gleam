@@ -18,7 +18,7 @@ pub fn sse_gtfs(
     request: req,
     initial_response: response.new(200),
     init: fn(self) {
-      process.send(state.gtfs_actor.data, gtfs_actor.SubscribeWatcher(self))
+      gtfs_actor.subscribe_watcher(state.gtfs_actor.data, self)
       Ok(actor.initialised(self))
     },
     loop: fn(self: process.Subject(Nil), _msg: Nil, conn: mist.SSEConnection) -> actor.Next(
@@ -34,10 +34,7 @@ pub fn sse_gtfs(
       case result.try(event, mist.send_event(conn, _)) {
         Ok(Nil) -> actor.continue(self)
         Error(Nil) -> {
-          process.send(
-            state.gtfs_actor.data,
-            gtfs_actor.UnsubscribeWatcher(self),
-          )
+          gtfs_actor.unsubscribe_watcher(state.gtfs_actor.data, self)
           actor.stop()
         }
       }

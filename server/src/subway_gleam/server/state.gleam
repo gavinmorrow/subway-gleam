@@ -12,5 +12,5 @@ pub type State {
 }
 
 pub fn fetch_gtfs(state: State) -> gtfs_actor.Data {
-  actor.call(state.gtfs_actor.data, waiting: 100, sending: gtfs_actor.Get)
+  gtfs_actor.get(state.gtfs_actor.data)
 }
