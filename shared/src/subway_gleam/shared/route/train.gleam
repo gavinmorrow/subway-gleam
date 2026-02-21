@@ -3,7 +3,6 @@ import gleam/dynamic/decode
 import gleam/json
 import gleam/list
 import gleam/option
-import gleam/time/duration
 import gleam/time/timestamp
 import lustre/attribute
 import lustre/element.{type Element}
@@ -12,6 +11,7 @@ import lustre/element/keyed
 
 import subway_gleam/gtfs/st
 import subway_gleam/shared/component/arrival_time
+import subway_gleam/shared/component/last_updated
 import subway_gleam/shared/component/route_bullet.{
   type RouteBullet, route_bullet,
 }
@@ -22,7 +22,7 @@ import subway_gleam/shared/util/timestamp_json
 
 pub type Model {
   Model(
-    last_updated: timestamp.Timestamp,
+    last_updated: Time,
     stops: List(Stop),
     highlighted_stop: option.Option(st.StopId),
     event_source: LiveStatus,
@@ -44,10 +44,7 @@ pub fn view(model: Model) -> Element(msg) {
 
   html.div([], [
     html.p([], [
-      html.text(
-        "Last updated "
-        <> last_updated |> timestamp.to_rfc3339(duration.hours(-4)),
-      ),
+      last_updated.last_updated(at: last_updated, cur_time:),
       html.br([]),
       live_status,
     ]),
@@ -56,7 +53,7 @@ pub fn view(model: Model) -> Element(msg) {
 }
 
 pub fn model_decoder() -> decode.Decoder(Model) {
-  use last_updated <- decode.field("last_updated", timestamp_json.decoder())
+  use last_updated <- decode.field("last_updated", time.decoder())
   use stops <- decode.field("stops", decode.list(stop_decoder()))
   use highlighted_stop <- decode.field(
     "highlighted_stop",
@@ -83,7 +80,7 @@ pub fn model_to_json(model: Model) -> json.Json {
   ) = model
 
   json.object([
-    #("last_updated", timestamp_json.to_json(last_updated)),
+    #("last_updated", time.to_json(last_updated)),
     #("stops", json.array(stops, stop_to_json)),
     #(
       "highlighted_stop",
