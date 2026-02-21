@@ -9,6 +9,7 @@ import plinth/browser/document
 import plinth/browser/element
 
 import subway_gleam/client/util/set_interval
+import subway_gleam/shared/component/arrival_time
 import subway_gleam/shared/route/stop.{type Model, Model, view}
 import subway_gleam/shared/util/live_status.{live_status}
 
@@ -51,7 +52,6 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           highlighted_train: _,
           event_source: _,
           cur_time: _,
-          time_zone_offset: _,
         )) -> #(
           Model(
             ..model,
@@ -85,11 +85,14 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       effect.none(),
     )
 
-    UpdateTime(cur_time, time_zone_offset) -> #(
+    UpdateTime(timestamp, time_zone_offset) -> #(
       Model(
         ..model,
-        cur_time:,
-        time_zone_offset: result.or(time_zone_offset, model.time_zone_offset),
+        cur_time: arrival_time.Time(
+          timestamp:,
+          time_zone_offset: time_zone_offset
+            |> result.or(model.cur_time.time_zone_offset),
+        ),
       ),
       effect.none(),
     )

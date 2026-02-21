@@ -21,7 +21,6 @@ import subway_gleam/shared/component/route_bullet.{
 import subway_gleam/shared/util
 import subway_gleam/shared/util/live_status.{type LiveStatus}
 import subway_gleam/shared/util/stop_id_json
-import subway_gleam/shared/util/time_zone_offset_json
 import subway_gleam/shared/util/timestamp_json
 
 pub type Model {
@@ -35,8 +34,7 @@ pub type Model {
     downtown: List(Arrival),
     highlighted_train: option.Option(rt.TrainId),
     event_source: LiveStatus,
-    cur_time: timestamp.Timestamp,
-    time_zone_offset: Result(duration.Duration, Nil),
+    cur_time: arrival_time.Time,
   )
 }
 
@@ -52,7 +50,6 @@ pub fn view(model: Model) -> Element(msg) {
     highlighted_train:,
     event_source:,
     cur_time:,
-    time_zone_offset:,
   ) = model
 
   let alerted_routes =
@@ -73,14 +70,12 @@ pub fn view(model: Model) -> Element(msg) {
       for: _,
       highlighting: highlighted_train,
       at: cur_time,
-      time_offset_by: time_zone_offset,
     ))
   let downtown =
     list.filter_map(downtown, arrival_li(
       for: _,
       highlighting: highlighted_train,
       at: cur_time,
-      time_offset_by: time_zone_offset,
     ))
 
   let live_status = case event_source {
@@ -130,11 +125,7 @@ pub fn model_decoder() -> decode.Decoder(Model) {
   )
   use uptown <- decode.field("uptown", decode.list(arrival_decoder()))
   use downtown <- decode.field("downtown", decode.list(arrival_decoder()))
-  use cur_time <- decode.field("cur_time", timestamp_json.decoder())
-  use time_zone_offset <- decode.field(
-    "time_zone_offset",
-    time_zone_offset_json.decoder(),
-  )
+  use cur_time <- decode.field("cur_time", arrival_time.time_decoder())
 
   decode.success(Model(
     name:,
@@ -147,7 +138,6 @@ pub fn model_decoder() -> decode.Decoder(Model) {
     highlighted_train:,
     event_source: live_status.Unavailable,
     cur_time:,
-    time_zone_offset:,
   ))
 }
 
@@ -164,7 +154,6 @@ pub fn model_to_json(model: Model) -> json.Json {
     // Can't encode an EventSource
     event_source: _,
     cur_time:,
-    time_zone_offset:,
   ) = model
 
   json.object([
@@ -181,8 +170,7 @@ pub fn model_to_json(model: Model) -> json.Json {
     ),
     #("uptown", json.array(uptown, arrival_to_json)),
     #("downtown", json.array(downtown, arrival_to_json)),
-    #("cur_time", timestamp_json.to_json(cur_time)),
-    #("time_zone_offset", time_zone_offset_json.to_json(time_zone_offset)),
+    #("cur_time", arrival_time.time_to_json(cur_time)),
   ])
 }
 
@@ -252,13 +240,12 @@ fn arrival_to_json(arrival: Arrival) -> json.Json {
 fn arrival_li(
   for arrival: Arrival,
   highlighting highlighted_train: option.Option(rt.TrainId),
-  at cur_time: timestamp.Timestamp,
-  time_offset_by time_zone_offset: Result(duration.Duration, Nil),
+  at cur_time: arrival_time.Time,
 ) -> Result(#(String, Element(msg)), Nil) {
   let Arrival(train_id:, train_url:, route:, headsign:, time:) = arrival
 
   // Filter to not show departed trains
-  let dt = time |> util.min_from(cur_time)
+  let dt = time |> util.min_from(cur_time.timestamp)
   use <- bool.guard(when: dt < 0, return: Error(Nil))
 
   let headsign =
@@ -280,11 +267,7 @@ fn arrival_li(
         [
           route_bullet(route),
           headsign |> result.unwrap(or: element.none()),
-          arrival_time(
-            arriving_at: time,
-            cur_time:,
-            offset_by: time_zone_offset,
-          ),
+          arrival_time(arriving_at: time, cur_time:),
         ],
       ),
     ]),

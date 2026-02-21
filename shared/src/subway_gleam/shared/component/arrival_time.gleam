@@ -1,4 +1,6 @@
+import gleam/dynamic/decode
 import gleam/int
+import gleam/json
 import gleam/pair
 import gleam/string
 import gleam/time/duration
@@ -7,11 +9,19 @@ import lustre/attribute
 import lustre/element
 import lustre/element/html
 import subway_gleam/shared/util
+import subway_gleam/shared/util/time_zone_offset_json
+import subway_gleam/shared/util/timestamp_json
+
+pub type Time {
+  Time(
+    timestamp: timestamp.Timestamp,
+    time_zone_offset: Result(duration.Duration, Nil),
+  )
+}
 
 pub fn arrival_time(
   arriving_at time: timestamp.Timestamp,
-  cur_time cur_time: timestamp.Timestamp,
-  offset_by time_zone_offset: Result(duration.Duration, Nil),
+  cur_time cur_time: Time,
 ) -> element.Element(msg) {
   html.div(
     [
@@ -24,9 +34,9 @@ pub fn arrival_time(
     ],
     [
       html.span([], [
-        html.text(relative_time(from: cur_time, to: time)),
+        html.text(relative_time(from: cur_time.timestamp, to: time)),
       ]),
-      case time_zone_offset {
+      case cur_time.time_zone_offset {
         Ok(time_zone_offset) -> {
           // TODO: is <pre> the right element? should this be smth in css?
           // TODO: make styled dimmer
@@ -40,6 +50,23 @@ pub fn arrival_time(
       },
     ],
   )
+}
+
+pub fn time_decoder() -> decode.Decoder(Time) {
+  use timestamp <- decode.field("timestamp", timestamp_json.decoder())
+  use time_zone_offset <- decode.field(
+    "time_zone_offset",
+    time_zone_offset_json.decoder(),
+  )
+  Time(timestamp:, time_zone_offset:) |> decode.success
+}
+
+pub fn time_to_json(time: Time) -> json.Json {
+  let Time(timestamp:, time_zone_offset:) = time
+  json.object([
+    #("timestamp", timestamp_json.to_json(timestamp)),
+    #("time_zone_offset", time_zone_offset_json.to_json(time_zone_offset)),
+  ])
 }
 
 fn relative_time(
