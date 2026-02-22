@@ -21,7 +21,7 @@ pub fn main() -> Result(lustre.Runtime(Msg), lustre.Error) {
     |> result.map(json.parse(_, train.model_decoder()))
 
   let app = lustre.application(init, update, view)
-  lustre.start(app, onto: "#app", with: hydrated_model)
+  let assert Ok(_) = lustre.start(app, onto: "#app", with: hydrated_model)
 }
 
 pub type Msg {
