@@ -24,6 +24,13 @@ import subway_gleam/server/state/gtfs_actor
 import subway_gleam/shared/route/stop as shared_stop
 import subway_gleam/shared/route/train as shared_train
 
+/// If true, bind to localhost. Otherwise, bind to `[::]`
+const serve_localhost = True
+
+/// A tuple of #(certfile, keyfile) for a TLS cert.
+/// Only matters when serve_localhost is False.
+const tls = option.Some(#("server.crt", "server.key"))
+
 pub fn main() -> Nil {
   let assert Ok(priv_dir) = wisp.priv_directory("subway_gleam")
   let assert Ok(schedule) = {
@@ -46,11 +53,36 @@ pub fn main() -> Nil {
 
   let secret_key_base = wisp.random_string(64)
 
-  let assert Ok(_) =
-    mist_handler(_, state, secret_key_base)
-    |> mist.new
-    |> mist.port(8000)
-    |> mist.start
+  let assert Ok(_) = case serve_localhost {
+    True ->
+      mist_handler(_, state, secret_key_base)
+      |> mist.new
+      |> mist.port(8000)
+      |> mist.start
+
+    False -> {
+      case tls {
+        option.Some(#(certfile, keyfile)) -> {
+          let assert Ok(_https_service) =
+            mist_handler(_, state, secret_key_base)
+            |> mist.new
+            |> mist.bind("::")
+            |> mist.port(443)
+            |> mist.with_tls(certfile:, keyfile:)
+            |> mist.start
+          Nil
+        }
+        _ -> Nil
+      }
+
+      let assert Ok(_http_service) =
+        mist_handler(_, state, secret_key_base)
+        |> mist.new
+        |> mist.bind("::")
+        |> mist.port(80)
+        |> mist.start
+    }
+  }
 
   process.sleep_forever()
 }

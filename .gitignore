@@ -4,6 +4,10 @@
 erl_crash.dump
 **/.lustre/
 
+# TLS certs for local development
+*.crt
+*.key
+
 # Don't check in the generated .js files
 server/priv/**/*.js
 
