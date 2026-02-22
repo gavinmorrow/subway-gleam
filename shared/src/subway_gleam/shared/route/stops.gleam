@@ -30,15 +30,15 @@ pub fn view(model: Model) -> element.Element(msg) {
   let Model(all_stops:, stop_routes:, cur_position:) = model
 
   // DEBUG
-  let cur_position =
-    geolocation.Position(
-      latitude: 40.7127667,
-      longitude: -74.0060544,
-      accuracy: 10.0,
-      // Okay to use current time bc this is for debugging
-      timestamp: util.current_time(),
-    )
-    |> option.Some
+  // let cur_position =
+  //   geolocation.Position(
+  //     latitude: 40.7127667,
+  //     longitude: -74.0060544,
+  //     accuracy: 10.0,
+  //     // Okay to use current time bc this is for debugging
+  //     timestamp: util.current_time(),
+  //   )
+  //   |> option.Some
 
   let stops_nearby =
     option.map(cur_position, fn(pos) {
