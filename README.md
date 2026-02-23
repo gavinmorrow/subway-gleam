@@ -2,7 +2,9 @@
 
 This is a little web app to view subway arrival times for the NYC Subway :]
 
-It uses lustre server-side, and sends over fully rendered static HTML.
+It sends over server-side rendered HTML pages using lustre, which are then
+hydrated (if possible) on the client. It aims to be progressively enhanced, and
+work without javascript enabled.
 
 ## Subprojects
 
