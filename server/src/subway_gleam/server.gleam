@@ -25,7 +25,7 @@ import subway_gleam/shared/route/stop as shared_stop
 import subway_gleam/shared/route/train as shared_train
 
 /// If true, bind to localhost. Otherwise, bind to `[::]`
-const serve_localhost = True
+const serve_localhost = False
 
 /// A tuple of #(certfile, keyfile) for a TLS cert.
 /// Only matters when serve_localhost is False.
