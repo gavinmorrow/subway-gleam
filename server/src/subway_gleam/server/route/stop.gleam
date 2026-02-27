@@ -19,7 +19,7 @@ import subway_gleam/gtfs/st
 import subway_gleam/server/hydration_scripts.{hydration_scripts}
 import subway_gleam/server/lustre_middleware.{Document, try_lustre_res}
 import subway_gleam/server/state
-import subway_gleam/server/state/gtfs_actor
+import subway_gleam/server/state/gtfs_store
 import subway_gleam/server/time_zone
 import subway_gleam/shared/component/route_bullet
 import subway_gleam/shared/route/stop
@@ -104,7 +104,7 @@ pub fn model(
     // TODO: also need to sort each group in sort order
     |> set.to_list
 
-  let gtfs_actor.Data(current: gtfs, last_updated:) = state.fetch_gtfs(state)
+  let gtfs_store.Data(current: gtfs, last_updated:) = state.fetch_gtfs(state)
 
   // Add in alerts from arrivals.
   // Needed b/c if a train is rerouted then alerts from that train should be

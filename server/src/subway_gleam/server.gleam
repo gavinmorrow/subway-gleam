@@ -20,7 +20,7 @@ import subway_gleam/server/route/stop
 import subway_gleam/server/route/train
 import subway_gleam/server/sse_gtfs.{sse_gtfs}
 import subway_gleam/server/state
-import subway_gleam/server/state/gtfs_actor
+import subway_gleam/server/state/gtfs_store
 import subway_gleam/shared/route/stop as shared_stop
 import subway_gleam/shared/route/train as shared_train
 
@@ -42,11 +42,11 @@ pub fn main() -> Nil {
         |> result.try(st.parse)
     }
   }
-  let assert Ok(gtfs_actor) = gtfs_actor.gtfs_actor()
-  let state = state.State(priv_dir:, schedule:, gtfs_actor:)
+  let assert Ok(gtfs_store) = gtfs_store.new()
+  let state = state.State(priv_dir:, schedule:, gtfs_store:)
 
   repeatedly.call(10 * 1000, Nil, fn(_state, _i) {
-    gtfs_actor.update(state.gtfs_actor.data)
+    gtfs_store.update(state.gtfs_store)
   })
 
   wisp.configure_logger()

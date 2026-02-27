@@ -1,16 +1,10 @@
-import gleam/otp/actor
-
 import subway_gleam/gtfs/st
-import subway_gleam/server/state/gtfs_actor
+import subway_gleam/server/state/gtfs_store.{type GtfsStore}
 
 pub type State {
-  State(
-    priv_dir: String,
-    schedule: st.Schedule,
-    gtfs_actor: actor.Started(gtfs_actor.Subject),
-  )
+  State(priv_dir: String, schedule: st.Schedule, gtfs_store: GtfsStore)
 }
 
-pub fn fetch_gtfs(state: State) -> gtfs_actor.Data {
-  gtfs_actor.get(state.gtfs_actor.data)
+pub fn fetch_gtfs(state: State) -> gtfs_store.Data {
+  gtfs_store.get(from: state.gtfs_store)
 }

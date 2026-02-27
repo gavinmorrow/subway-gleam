@@ -1,6 +1,6 @@
 import gleam/time/timestamp
 
-pub const use_local_st: Bool = False
+pub const use_local_st: Bool = True
 
 pub const use_local_rt: Bool = False
 

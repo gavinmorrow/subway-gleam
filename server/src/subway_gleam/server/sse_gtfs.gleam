@@ -7,7 +7,7 @@ import gleam/result
 import mist
 
 import subway_gleam/server/state
-import subway_gleam/server/state/gtfs_actor
+import subway_gleam/server/state/gtfs_store
 
 pub fn sse_gtfs(
   req: request.Request(mist.Connection),
@@ -18,7 +18,7 @@ pub fn sse_gtfs(
     request: req,
     initial_response: response.new(200),
     init: fn(self) {
-      gtfs_actor.subscribe_watcher(state.gtfs_actor.data, self)
+      gtfs_store.subscribe_watcher(self, to: state.gtfs_store)
       Ok(actor.initialised(self))
     },
     loop: fn(self: process.Subject(Nil), _msg: Nil, conn: mist.SSEConnection) -> actor.Next(
@@ -34,7 +34,7 @@ pub fn sse_gtfs(
       case result.try(event, mist.send_event(conn, _)) {
         Ok(Nil) -> actor.continue(self)
         Error(Nil) -> {
-          gtfs_actor.unsubscribe_watcher(state.gtfs_actor.data, self)
+          gtfs_store.unsubscribe_watcher(self, from: state.gtfs_store)
           actor.stop()
         }
       }

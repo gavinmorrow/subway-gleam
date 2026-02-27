@@ -17,7 +17,7 @@ import subway_gleam/gtfs/st
 import subway_gleam/server/hydration_scripts.{hydration_scripts}
 import subway_gleam/server/lustre_middleware.{Body, Document, try_lustre_res}
 import subway_gleam/server/state
-import subway_gleam/server/state/gtfs_actor
+import subway_gleam/server/state/gtfs_store
 import subway_gleam/server/time_zone
 import subway_gleam/shared/component/route_bullet
 import subway_gleam/shared/route/train
@@ -65,7 +65,7 @@ pub fn model(
     |> result.map(pair.first)
     |> option.from_result
 
-  let gtfs_actor.Data(current: gtfs, last_updated:) = state.fetch_gtfs(state)
+  let gtfs_store.Data(current: gtfs, last_updated:) = state.fetch_gtfs(state)
 
   use train_id <- result.try(
     uri.percent_decode(train_id)

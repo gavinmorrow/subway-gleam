@@ -12,7 +12,7 @@ import subway_gleam/gtfs/st
 import subway_gleam/server/lustre_middleware.{Document, try_lustre_res}
 import subway_gleam/server/route/stop
 import subway_gleam/server/state
-import subway_gleam/server/state/gtfs_actor
+import subway_gleam/server/state/gtfs_store
 import subway_gleam/server/time_zone
 import subway_gleam/shared/route/stop/alerts
 import subway_gleam/shared/util/time
@@ -42,7 +42,7 @@ pub fn alerts(
   let route =
     route_id |> option.to_result(Nil) |> result.try(st.route_id_long_to_route)
 
-  let gtfs_actor.Data(current: gtfs, last_updated:) = state.fetch_gtfs(state)
+  let gtfs_store.Data(current: gtfs, last_updated:) = state.fetch_gtfs(state)
 
   // Add in alerts from arrivals.
   // Needed b/c if a train is rerouted then alerts from that train should be
