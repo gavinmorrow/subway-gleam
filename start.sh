@@ -1,7 +1,7 @@
 #! /bin/sh
 
 if ! [ "$1" = "--no-client" ]; then
-  pushd ./client
+  cd ./client
 
   if [ "$1" = "--client" ]; then
     gleam run -m lustre/dev build subway_gleam/client/$2
@@ -12,12 +12,12 @@ if ! [ "$1" = "--no-client" ]; then
     gleam run -m lustre/dev build subway_gleam/client/train
   fi
 
-  popd
+  cd ..
 fi
 
 
-pushd ./server
+cd ./server
 
 gleam run -m subway_gleam/server
 
-popd
+cd ..
