@@ -21,6 +21,7 @@ protobin = ">= 2.0.0 and < 3.0.0"
 gleam_time = ">= 1.7.0 and < 2.0.0"
 gtfs_rt_nyct = ">= 0.2.0 and < 1.0.0"
 gsv = ">= 5.0.0 and < 6.0.0"
+envoy = ">= 1.1.0 and < 2.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"

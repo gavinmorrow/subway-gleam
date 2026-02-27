@@ -8,9 +8,10 @@ import repeatedly
 import wisp
 import wisp/wisp_mist
 
-import subway_gleam/gtfs/comp_flags
+import subway_gleam/gtfs/env as gtfs_env
 import subway_gleam/gtfs/st
 import subway_gleam/gtfs/st/schedule_sample
+import subway_gleam/server/env
 import subway_gleam/server/gtfs/fetch_st
 import subway_gleam/server/normalize_path_trailing_slash.{
   normalize_path_trailing_slash,
@@ -24,17 +25,10 @@ import subway_gleam/server/state/gtfs_store
 import subway_gleam/shared/route/stop as shared_stop
 import subway_gleam/shared/route/train as shared_train
 
-/// If true, bind to localhost. Otherwise, bind to `[::]`
-const serve_localhost = False
-
-/// A tuple of #(certfile, keyfile) for a TLS cert.
-/// Only matters when serve_localhost is False.
-const tls = option.Some(#("server.crt", "server.key"))
-
 pub fn main() -> Nil {
   let assert Ok(priv_dir) = wisp.priv_directory("subway_gleam")
   let assert Ok(schedule) = {
-    case comp_flags.use_local_st {
+    case gtfs_env.use_local_st() {
       True -> schedule_sample.schedule()
       False ->
         fetch_st.fetch_bin(st.Regular)
@@ -52,37 +46,30 @@ pub fn main() -> Nil {
   wisp.configure_logger()
 
   let secret_key_base = wisp.random_string(64)
+  let host = env.host()
+  let http_port = env.http_port()
+  let https_port = env.https_port()
 
-  let assert Ok(_) = case serve_localhost {
-    True ->
-      mist_handler(_, state, secret_key_base)
-      |> mist.new
-      |> mist.port(8000)
-      |> mist.start
-
-    False -> {
-      case tls {
-        option.Some(#(certfile, keyfile)) -> {
-          let assert Ok(_https_service) =
-            mist_handler(_, state, secret_key_base)
-            |> mist.new
-            |> mist.bind("::")
-            |> mist.port(443)
-            |> mist.with_tls(certfile:, keyfile:)
-            |> mist.start
-          Nil
-        }
-        _ -> Nil
-      }
-
-      let assert Ok(_http_service) =
+  case env.certfile(), env.keyfile() {
+    Ok(certfile), Ok(keyfile) -> {
+      let assert Ok(_https_service) =
         mist_handler(_, state, secret_key_base)
         |> mist.new
-        |> mist.bind("::")
-        |> mist.port(80)
+        |> mist.bind(host)
+        |> mist.port(https_port)
+        |> mist.with_tls(certfile:, keyfile:)
         |> mist.start
+      Nil
     }
+    _, _ -> Nil
   }
+
+  let assert Ok(_http_service) =
+    mist_handler(_, state, secret_key_base)
+    |> mist.new
+    |> mist.bind(host)
+    |> mist.port(http_port)
+    |> mist.start
 
   process.sleep_forever()
 }

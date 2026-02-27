@@ -6,11 +6,11 @@ import gtfs_rt_nyct
 import protobin
 import simplifile
 
-import subway_gleam/gtfs/comp_flags
+import subway_gleam/gtfs/env
 import subway_gleam/gtfs/rt
 
 fn fetch_gtfs_rt_bin(feed: rt.GtfsRtFeed) -> Result(BitArray, httpc.HttpError) {
-  case comp_flags.use_local_rt {
+  case env.use_local_rt() {
     True -> {
       let name = gtfs_rt_feed_filename(feed)
       let path = "../gtfs_rt_samples/" <> name
@@ -37,7 +37,7 @@ pub fn fetch_gtfs(
     fetch_gtfs_rt_bin(feed) |> result.map_error(rt.HttpError),
   )
 
-  let assert Ok(Nil) = case comp_flags.save_fetched_rt {
+  let assert Ok(Nil) = case env.save_fetched_rt() {
     True -> {
       let filename = gtfs_rt_feed_filename(feed)
       simplifile.write_bits(bits, to: "../gtfs_rt_samples/" <> filename)

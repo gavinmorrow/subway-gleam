@@ -25,11 +25,25 @@ To run the project: build the client, start the server, then go to
 `localhost:8000` in your web browser of choice. You can also run `./start.sh` in
 the project root.
 
-If this is your first time running it, make sure that the flags for `st` in
-`src/comp_flags.gleam` are set to fetch from the internet and save the values
-to disk. After doing `gleam run` once followed by
-`gleam run -m subway_gleam/gtfs/st/gen_schedule`, they will be saved, so
-development can continue locally without re-fetching and parsing each time.
-The folder `./gtfs/src/subway_gleam/gtfs/st/schedule_sample/` may need to be
-created. Disable the fetch and save to disk flags afterwards, and only enable
+If this is your first time running it, make sure that the env var are set to
+fetch from the internet and save the values to disk. After doing `gleam run`
+once followed by `gleam run -m gen_schedule` (inside of `server`), they will
+be saved, so development can continue locally without re-fetching and parsing
+each time. The folder `./gtfs/src/subway_gleam/gtfs/st/schedule_sample/` may
+need to be created. Disable fetch and save to disk afterwards, and only enable
 when needed.
+
+### Env vars
+
+| name              | description                                       |
+| ----------------- | ------------------------------------------------- | 
+| `host`            | The interface to bind to when starting the server |
+| `http_port`       | The port to bind to for the HTTP server           |
+| `https_port`      | The port to bind to for the HTTPS server          |
+| `certfile`        | Path to the `.crt` file. leave unset for no TLS. relative to `server`. |
+| `keyfile`         | Path to the `.key` file. leave unset for no TLS. relative to `server`. |
+| `gtfs_st`         | If "local": use the cached st data.               |
+| `gtfs_rt`         | If "local": use the cached rt data.               |
+| `save_fetched_st` | If "true": write fetched st data to disk.         |
+| `save_fetched_rt` | If "true": write fetched rt data to disk.         |
+| `gtfs_rt_fetch_time` | The unix time in sec the cached rt was fetched at. |

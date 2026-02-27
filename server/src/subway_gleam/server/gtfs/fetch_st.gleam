@@ -3,7 +3,7 @@ import gleam/httpc
 import gleam/result
 import simplifile
 
-import subway_gleam/gtfs/comp_flags
+import subway_gleam/gtfs/env
 import subway_gleam/gtfs/st
 
 pub fn fetch_bin(feed: st.Feed) -> Result(BitArray, httpc.HttpError) {
@@ -15,7 +15,7 @@ pub fn fetch_bin(feed: st.Feed) -> Result(BitArray, httpc.HttpError) {
 
   use res <- result.try(httpc.send_bits(req))
 
-  let assert Ok(Nil) = case comp_flags.save_fetched_st {
+  let assert Ok(Nil) = case env.save_fetched_st() {
     True -> simplifile.write_bits(res.body, to: "gtfs_subway.zip")
     False -> Ok(Nil)
   }

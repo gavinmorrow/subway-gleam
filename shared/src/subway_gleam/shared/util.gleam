@@ -3,12 +3,12 @@ import gleam/result
 import gleam/time/duration
 import gleam/time/timestamp
 
-import subway_gleam/gtfs/comp_flags
+import subway_gleam/gtfs/env
 
 /// This exists so that for debugging, the time can be when the feed was fetched.
 pub fn current_time() -> timestamp.Timestamp {
   // timestamp.system_time()
-  comp_flags.rt_time()
+  env.rt_time()
 }
 
 pub fn min_from(
