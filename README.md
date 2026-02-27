@@ -21,9 +21,10 @@ work without javascript enabled.
 
 ## Development
 
+There are a few [`just`](https://just.systems/) recipes available for use.
+
 To run the project: build the client, start the server, then go to
-`localhost:8000` in your web browser of choice. You can also run `./start.sh` in
-the project root.
+`localhost:8080` in your web browser of choice. You can also use `just start`.
 
 If this is your first time running it, make sure that the env var are set to
 fetch from the internet and save the values to disk. After doing `gleam run`
