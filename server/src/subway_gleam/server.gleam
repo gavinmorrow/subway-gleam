@@ -44,6 +44,7 @@ pub fn main() -> Nil {
   })
 
   wisp.configure_logger()
+  configure_logger()
 
   let secret_key_base = wisp.random_string(64)
   let host = env.host()
@@ -114,6 +115,8 @@ fn handler(state: state.State, req: wisp.Request) -> wisp.Response {
   // redirect to the alerts page for the stop.
   use req <- normalize_path_trailing_slash(req)
 
+  use <- wisp.log_request(req)
+
   case wisp.path_segments(req) {
     [] -> route.index(req)
     ["stops"] -> route.stops(req, state)
@@ -129,3 +132,6 @@ fn handler(state: state.State, req: wisp.Request) -> wisp.Response {
     _ -> route.not_found(req)
   }
 }
+
+@external(erlang, "logger_config_ffi", "configure")
+fn configure_logger() -> Nil
