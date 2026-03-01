@@ -1,10 +1,12 @@
 import gleam/erlang/process
+import gleam/http
 import gleam/http/request
 import gleam/http/response
 import gleam/json
 import gleam/otp/actor
 import gleam/result
 import mist
+import wisp
 
 import subway_gleam/server/state
 import subway_gleam/server/state/gtfs_store
@@ -14,6 +16,8 @@ pub fn sse_gtfs(
   state: state.State,
   model: fn() -> Result(json.Json, anyerror),
 ) -> response.Response(mist.ResponseData) {
+  wisp.log_info("    " <> http.method_to_string(req.method) <> " " <> req.path)
+
   mist.server_sent_events(
     request: req,
     initial_response: response.new(200),
