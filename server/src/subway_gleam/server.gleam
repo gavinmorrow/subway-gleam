@@ -51,26 +51,21 @@ pub fn main() -> Nil {
   let http_port = env.http_port()
   let https_port = env.https_port()
 
-  case env.certfile(), env.keyfile() {
-    Ok(certfile), Ok(keyfile) -> {
-      let assert Ok(_https_service) =
-        mist_handler(_, state, secret_key_base)
-        |> mist.new
-        |> mist.bind(host)
-        |> mist.port(https_port)
-        |> mist.with_tls(certfile:, keyfile:)
-        |> mist.start
-      Nil
-    }
-    _, _ -> Nil
+  let assert Ok(_service) = case env.certfile(), env.keyfile() {
+    Ok(certfile), Ok(keyfile) ->
+      mist_handler(_, state, secret_key_base)
+      |> mist.new
+      |> mist.bind(host)
+      |> mist.port(https_port)
+      |> mist.with_tls(certfile:, keyfile:)
+      |> mist.start
+    _, _ ->
+      mist_handler(_, state, secret_key_base)
+      |> mist.new
+      |> mist.bind(host)
+      |> mist.port(http_port)
+      |> mist.start
   }
-
-  let assert Ok(_http_service) =
-    mist_handler(_, state, secret_key_base)
-    |> mist.new
-    |> mist.bind(host)
-    |> mist.port(http_port)
-    |> mist.start
 
   process.sleep_forever()
 }
