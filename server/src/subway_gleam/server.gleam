@@ -5,6 +5,7 @@ import gleam/option
 import gleam/result
 import mist
 import repeatedly
+import subway_gleam/server/log
 import wisp
 import wisp/wisp_mist
 
@@ -110,7 +111,8 @@ fn handler(state: state.State, req: wisp.Request) -> wisp.Response {
   // redirect to the alerts page for the stop.
   use req <- normalize_path_trailing_slash(req)
 
-  use <- wisp.log_request(req)
+  // TODO: pass context to routes for logging
+  use req, _context <- log.request(req)
 
   case wisp.path_segments(req) {
     [] -> route.index(req)
