@@ -50,23 +50,19 @@ pub fn main() -> Nil {
   let secret_key_base = wisp.random_string(64)
   let wisp_handler = wisp_mist.handler(handler(state, _), secret_key_base)
 
-  let host = env.host()
-  let http_port = env.http_port()
-  let https_port = env.https_port()
-
   let assert Ok(_service) = case env.certfile(), env.keyfile() {
     Ok(certfile), Ok(keyfile) ->
       mist_handler(_, state, wisp_handler)
       |> mist.new
-      |> mist.bind(host)
-      |> mist.port(https_port)
+      |> mist.bind(env.host())
+      |> mist.port(env.https_port())
       |> mist.with_tls(certfile:, keyfile:)
       |> mist.start
     _, _ ->
       mist_handler(_, state, wisp_handler)
       |> mist.new
-      |> mist.bind(host)
-      |> mist.port(http_port)
+      |> mist.bind(env.host())
+      |> mist.port(env.http_port())
       |> mist.start
   }
 
