@@ -27,6 +27,11 @@ import subway_gleam/shared/route/stop as shared_stop
 import subway_gleam/shared/route/train as shared_train
 
 pub fn main() -> Nil {
+  wisp.configure_logger()
+  configure_logger()
+
+  log.notice("Starting sbwy...", with: log.new_context())
+
   let assert Ok(priv_dir) = wisp.priv_directory("subway_gleam")
   let assert Ok(schedule) = {
     case gtfs_env.use_local_st() {
@@ -40,15 +45,16 @@ pub fn main() -> Nil {
   let assert Ok(gtfs_store) = gtfs_store.new()
   let state = state.State(priv_dir:, schedule:, gtfs_store:)
 
+  log.debug("Setup initial state.", with: log.new_context())
+
   repeatedly.call(10 * 1000, Nil, fn(_state, _i) {
     gtfs_store.update(state.gtfs_store)
   })
 
-  wisp.configure_logger()
-  configure_logger()
-
   let secret_key_base = wisp.random_string(64)
   let wisp_handler = wisp_mist.handler(handler(state, _), secret_key_base)
+
+  log.debug("Starting server...", with: log.new_context())
 
   let assert Ok(_service) = case env.certfile(), env.keyfile() {
     Ok(certfile), Ok(keyfile) ->
@@ -65,6 +71,8 @@ pub fn main() -> Nil {
       |> mist.port(env.http_port())
       |> mist.start
   }
+
+  log.debug("Main process sleeping forever...", with: log.new_context())
 
   process.sleep_forever()
 }
