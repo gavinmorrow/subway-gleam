@@ -22,7 +22,7 @@ pub fn arrival_time(
       Ok(time_zone_offset) -> {
         // TODO: is <pre> the right element? should this be smth in css?
         // TODO: make styled dimmer
-        html.pre([], [
+        html.span([], [
           html.text(time_of_day(at: time, offset_by: time_zone_offset)),
         ])
       }
@@ -40,7 +40,7 @@ fn relative_time(
   time
   |> util.min_from(cur_time)
   |> int.to_string
-  <> "min"
+  <> "m"
 }
 
 fn time_of_day(

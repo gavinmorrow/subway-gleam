@@ -113,10 +113,17 @@ pub fn view(model: Model, toggle_fav_btn_pressed_msg: msg) -> Element(msg) {
         html.text(alert_summary),
       ]),
     ]),
-    html.h2([], [html.text("Uptown")]),
-    keyed.ul([attribute.class("arrival-list")], uptown),
-    html.h2([], [html.text("Downtown")]),
-    keyed.ul([attribute.class("arrival-list")], downtown),
+    // TODO: buttons for expand
+    html.main([attribute.class("arrival-list-wrapper")], [
+      html.div([], [
+        html.h2([], [html.text("Uptown")]),
+        keyed.ul([attribute.class("arrival-list")], uptown),
+      ]),
+      html.div([], [
+        html.h2([], [html.text("Downtown")]),
+        keyed.ul([attribute.class("arrival-list")], downtown),
+      ]),
+    ]),
   ])
 }
 
