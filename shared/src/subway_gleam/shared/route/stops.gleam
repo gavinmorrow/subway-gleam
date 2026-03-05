@@ -14,7 +14,6 @@ import lustre/element/keyed
 import subway_gleam/gtfs/st
 import subway_gleam/shared/component/route_bullet
 import subway_gleam/shared/ffi/geolocation
-import subway_gleam/shared/util
 import subway_gleam/shared/util/haversine
 import subway_gleam/shared/util/stop_id_json
 
