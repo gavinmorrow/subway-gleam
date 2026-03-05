@@ -10,7 +10,9 @@ import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre/element/keyed
+import lustre/event
 import subway_gleam/shared/component/last_updated
+import subway_gleam/shared/route/stops
 
 import subway_gleam/gtfs/rt
 import subway_gleam/gtfs/st
@@ -26,6 +28,7 @@ import subway_gleam/shared/util/timestamp_json
 
 pub type Model {
   Model(
+    id: st.StopId,
     name: String,
     last_updated: Time,
     transfers: List(Transfer),
@@ -36,11 +39,13 @@ pub type Model {
     highlighted_train: option.Option(rt.TrainId),
     event_source: LiveStatus,
     cur_time: Time,
+    is_fav: Bool,
   )
 }
 
-pub fn view(model: Model) -> Element(msg) {
+pub fn view(model: Model, toggle_fav_btn_pressed_msg: msg) -> Element(msg) {
   let Model(
+    id:,
     name:,
     last_updated:,
     transfers:,
@@ -51,6 +56,7 @@ pub fn view(model: Model) -> Element(msg) {
     highlighted_train:,
     event_source:,
     cur_time:,
+    is_fav:,
   ) = model
 
   let alerted_routes =
@@ -89,6 +95,12 @@ pub fn view(model: Model) -> Element(msg) {
     html.h1([], [
       html.text(name),
     ]),
+    html.button([event.on_click(toggle_fav_btn_pressed_msg)], [
+      html.text(case is_fav {
+        True -> "Unfavorite"
+        False -> "Favorite"
+      }),
+    ]),
     html.aside([], [
       last_updated.last_updated(at: last_updated, cur_time:),
       html.br([]),
@@ -108,7 +120,12 @@ pub fn view(model: Model) -> Element(msg) {
   ])
 }
 
+pub fn model_to_stop_li(model: Model) -> stops.StopLi {
+  stops.StopLi(id: model.id, name: model.name)
+}
+
 pub fn model_decoder() -> decode.Decoder(Model) {
+  use id <- decode.field("id", decode.string |> decode.map(st.StopId))
   use name <- decode.field("name", decode.string)
   use last_updated <- decode.field("last_updated", time.decoder())
   use transfers <- decode.field("transfers", decode.list(transfer_decoder()))
@@ -126,6 +143,7 @@ pub fn model_decoder() -> decode.Decoder(Model) {
   use cur_time <- decode.field("cur_time", time.decoder())
 
   decode.success(Model(
+    id:,
     name:,
     last_updated:,
     transfers:,
@@ -136,11 +154,13 @@ pub fn model_decoder() -> decode.Decoder(Model) {
     highlighted_train:,
     event_source: live_status.Unavailable,
     cur_time:,
+    is_fav: False,
   ))
 }
 
 pub fn model_to_json(model: Model) -> json.Json {
   let Model(
+    id:,
     name:,
     last_updated:,
     transfers:,
@@ -152,9 +172,14 @@ pub fn model_to_json(model: Model) -> json.Json {
     // Can't encode an EventSource
     event_source: _,
     cur_time:,
+    // is_fav is just client-side
+    is_fav: _,
   ) = model
 
+  let st.StopId(id) = id
+
   json.object([
+    #("id", json.string(id)),
     #("name", json.string(name)),
     #("last_updated", time.to_json(last_updated)),
     #("transfers", json.array(transfers, transfer_to_json)),

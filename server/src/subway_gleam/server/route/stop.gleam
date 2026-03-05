@@ -41,7 +41,7 @@ pub fn stop(
       ]
       let body = [
         html.div([attribute.id("app")], [
-          stop.view(model),
+          stop.view(model, Nil),
         ]),
       ]
 
@@ -154,6 +154,7 @@ pub fn model(
     time.Time(last_updated, time_zone.new_york_offset(at: last_updated))
 
   Ok(stop.Model(
+    id: stop.id,
     name: stop.name,
     last_updated:,
     transfers:,
@@ -164,6 +165,7 @@ pub fn model(
     highlighted_train:,
     event_source: live_status.Unavailable,
     cur_time:,
+    is_fav: False,
   ))
 }
 

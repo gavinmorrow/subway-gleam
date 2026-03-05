@@ -21,7 +21,8 @@ body {
 
 .arrival-list,
 .stops-list,
-.stops-nearby-list {
+.stops-nearby-list,
+.favorite-stops-list {
   list-style: none;
   padding: 0;
 

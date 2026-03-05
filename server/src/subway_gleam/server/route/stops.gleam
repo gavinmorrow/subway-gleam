@@ -34,7 +34,13 @@ pub fn stops(req: wisp.Request, state: state.State) -> wisp.Response {
       |> list.map(route_bullet.from_route_data)
     })
 
-  let model = stops.Model(all_stops:, stop_routes:, cur_position: option.None)
+  let model =
+    stops.Model(
+      all_stops:,
+      stop_routes:,
+      cur_position: option.None,
+      fav_stops: [],
+    )
 
   let head = [
     html.title([], "Stops"),
