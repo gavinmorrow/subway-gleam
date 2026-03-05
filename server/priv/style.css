@@ -30,7 +30,6 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    gap: var(--margin);
 
     color: var(--color-text);
     text-decoration: none;
@@ -41,7 +40,7 @@ body {
     }
 
     box-sizing: border-box;
-    height: calc(var(--bullet-size) + var(--padding));
+    /* height: calc(var(--bullet-size) + var(--padding)); */
 
     --padding: 0.5em;
     --margin: calc(var(--padding) * 2 / 3);
@@ -57,20 +56,46 @@ body {
       flex-shrink: 0;
     }
 
-    .headsign {
-      flex-grow: 1;
+    & > div {
+      display: flex;
+      justify-content: space-between;
+      flex: 1;
+      align-items: baseline;
+      gap: var(--margin);
+      padding-left: var(--margin);
+
+      position: relative;
+
+      .headsign {
+        flex: 1 1 0%;
+
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+
+      .arrival-time {
+        position: absolute;
+        right: 0;
+
+        --fade-distance: 2em;
+
+        padding-left: var(--fade-distance);
+        background: linear-gradient(
+          to right,
+          transparent,
+          rgba(from var(--color-bg-1) r g b / 100%) var(--fade-distance),
+          var(--color-bg-1)
+        );
+      }
     }
 
     margin: var(--margin) 0;
-    border-radius: var(--bullet-size);
+    border-radius: calc(var(--bullet-size) / sqrt(2));
 
     * {
-      /* TODO: this is kinda hacky and probably font-dependent */
-      /* Does seem to be pretty close though */
-      /* Take a look into text-box if more browsers support it */
       line-height: 1;
-      margin-top: -0.05em;
-      margin-bottom: -0.25em;
+      min-width: 0;
     }
   }
 }

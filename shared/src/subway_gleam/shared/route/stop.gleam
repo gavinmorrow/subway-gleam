@@ -291,8 +291,10 @@ fn arrival_li(
         ],
         [
           route_bullet(route),
-          headsign |> result.unwrap(or: element.none()),
-          arrival_time(arriving_at: time, cur_time:),
+          html.div([], [
+            headsign |> result.unwrap(or: element.none()),
+            arrival_time(arriving_at: time, cur_time:),
+          ]),
         ],
       ),
     ]),
