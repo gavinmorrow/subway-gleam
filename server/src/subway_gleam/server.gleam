@@ -1,6 +1,7 @@
 import gleam/erlang/process
 import gleam/http/request
 import gleam/http/response
+import gleam/int
 import gleam/option
 import gleam/result
 import mist
@@ -54,21 +55,31 @@ pub fn main() -> Nil {
   let secret_key_base = wisp.random_string(64)
   let wisp_handler = wisp_mist.handler(handler(state, _), secret_key_base)
 
-  log.debug("Starting server...", with: log.new_context())
+  let host = env.host()
+  let http_port = env.http_port()
+  let https_port = env.https_port()
+  log.debug(
+    "Starting server...",
+    with: log.context([
+      #("host", host),
+      #("http_port", http_port |> int.to_string),
+      #("https_port", https_port |> int.to_string),
+    ]),
+  )
 
   let assert Ok(_service) = case env.certfile(), env.keyfile() {
     Ok(certfile), Ok(keyfile) ->
       mist_handler(_, state, wisp_handler)
       |> mist.new
-      |> mist.bind(env.host())
-      |> mist.port(env.https_port())
+      |> mist.bind(host)
+      |> mist.port(https_port)
       |> mist.with_tls(certfile:, keyfile:)
       |> mist.start
     _, _ ->
       mist_handler(_, state, wisp_handler)
       |> mist.new
       |> mist.bind(env.host())
-      |> mist.port(env.http_port())
+      |> mist.port(http_port)
       |> mist.start
   }
 
