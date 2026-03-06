@@ -1,3 +1,6 @@
+set dotenv-load
+set dotenv-required
+
 start: build-client start-server
 
 [working-directory: 'server']
