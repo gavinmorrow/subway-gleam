@@ -5,6 +5,7 @@ erl_crash.dump
 **/.lustre/
 
 .env
+*.log
 
 # TLS certs for local development
 *.crt
