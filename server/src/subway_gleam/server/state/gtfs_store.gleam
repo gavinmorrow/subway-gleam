@@ -7,6 +7,7 @@ import gleam/time/timestamp
 
 import subway_gleam/gtfs/rt
 import subway_gleam/server/gtfs/fetch_rt
+import subway_gleam/server/log
 import subway_gleam/shared/util
 
 pub opaque type GtfsStore {
@@ -29,6 +30,7 @@ pub fn get(from store: GtfsStore) -> Data {
 }
 
 pub fn update(store: GtfsStore) -> Nil {
+  log.debug("Starting gtfs rt update...", with: log.new_context())
   process.spawn(fn() {
     use data <- result.map(fetch_all_rt_feeds())
     // Update data
@@ -45,6 +47,9 @@ pub fn subscribe_watcher(
 ) -> Nil {
   let watchers = booklet.get(store.watchers)
   booklet.set(store.watchers, to: set.insert(watcher, into: watchers))
+  // Send an update immediately after connecting
+  // Sometimes it will be useless, but if it's a reconnection then it will help
+  process.send(watcher, Nil)
 }
 
 pub fn unsubscribe_watcher(
