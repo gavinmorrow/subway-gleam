@@ -8,6 +8,7 @@ import subway_gleam/server/route/stop
 import subway_gleam/server/route/stop/alerts
 import subway_gleam/server/route/stops
 import subway_gleam/server/route/train
+import subway_gleam/shared/component/navbar.{navbar}
 
 pub fn index(req: wisp.Request) -> wisp.Response {
   use _req <- lustre_res(req)
@@ -15,6 +16,7 @@ pub fn index(req: wisp.Request) -> wisp.Response {
   let body = [
     html.p([], [html.text("subways! yay!")]),
     html.a([attribute.href("/stops")], [html.text("stops nearby")]),
+    navbar(),
   ]
   let res = wisp.response(200)
 
@@ -24,7 +26,12 @@ pub fn index(req: wisp.Request) -> wisp.Response {
 pub fn not_found(req: wisp.Request) -> wisp.Response {
   use _req <- lustre_res(req)
 
-  let body = [html.p([], [html.text("404 not found :[")])]
+  let body = [
+    html.p([], [
+      html.text("404 not found :["),
+    ]),
+    navbar(),
+  ]
   let res = wisp.response(404)
 
   #(Body(body:), res)

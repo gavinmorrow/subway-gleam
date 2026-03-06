@@ -17,6 +17,7 @@ import subway_gleam/shared/route/stops
 import subway_gleam/gtfs/rt
 import subway_gleam/gtfs/st
 import subway_gleam/shared/component/arrival_time.{arrival_time}
+import subway_gleam/shared/component/navbar.{navbar}
 import subway_gleam/shared/component/route_bullet.{
   type RouteBullet, route_bullet,
 }
@@ -43,9 +44,10 @@ pub type Model {
   )
 }
 
+// TODO: should the Msg type be moved in here?
 pub fn view(model: Model, toggle_fav_btn_pressed_msg: msg) -> Element(msg) {
   let Model(
-    id:,
+    id: _,
     name:,
     last_updated:,
     transfers:,
@@ -124,6 +126,7 @@ pub fn view(model: Model, toggle_fav_btn_pressed_msg: msg) -> Element(msg) {
         keyed.ul([attribute.class("arrival-list")], downtown),
       ]),
     ]),
+    navbar(),
   ])
 }
 

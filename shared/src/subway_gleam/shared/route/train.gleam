@@ -12,6 +12,7 @@ import lustre/element/keyed
 import subway_gleam/gtfs/st
 import subway_gleam/shared/component/arrival_time
 import subway_gleam/shared/component/last_updated
+import subway_gleam/shared/component/navbar.{navbar}
 import subway_gleam/shared/component/route_bullet.{
   type RouteBullet, route_bullet,
 }
@@ -49,6 +50,7 @@ pub fn view(model: Model) -> Element(msg) {
       live_status,
     ]),
     keyed.ol([attribute.class("stops-list")], stops),
+    navbar(),
   ])
 }
 

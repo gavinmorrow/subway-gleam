@@ -8,6 +8,7 @@ import lustre/element/html
 import subway_gleam/gtfs/rt/rich_text.{type RichText}
 import subway_gleam/gtfs/st
 import subway_gleam/shared/component/last_updated
+import subway_gleam/shared/component/navbar.{navbar}
 import subway_gleam/shared/component/rich_text as rich_text_component
 import subway_gleam/shared/component/route_bullet.{route_bullet}
 import subway_gleam/shared/util/time.{type Time}
@@ -77,6 +78,7 @@ pub fn view(model: Model) -> Element(msg) {
     ]),
     route_selection,
     html.main([], [alerts_list]),
+    navbar(),
   ])
 }
 

@@ -7,6 +7,9 @@
   --color-text-deemphasized: #aaa;
 
   --bullet-size: 1.5em;
+
+  --nav-padding: 0.5em;
+  --nav-height: calc(var(--nav-padding) * 2 + 1lh);
 }
 
 a {
@@ -19,6 +22,33 @@ body {
   color: var(--color-text);
   font-family: system-ui;
   color-scheme: dark;
+  margin-bottom: var(--nav-height);
+}
+
+#navbar {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  z-index: 1000;
+
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+
+  height: var(--nav-height);
+  padding: var(--nav-padding);
+  margin: calc(var(--nav-padding) * 2 / 3);
+  border-radius: var(--nav-height);
+  box-sizing: border-box;
+
+  background-color: oklch(from var(--color-bg-1) l c h / var(--bg-alpha, 1));
+  box-shadow: 0.1em 0.1em 1em black;
+  border: 1px solid oklch(from var(--color-bg-1) calc(l + 0.1) c h);
+  @supports (backdrop-filter: blur(0)) {
+    --bg-alpha: 0.85;
+    backdrop-filter: blur(0.5em);
+  }
 }
 
 .arrival-list,
@@ -36,9 +66,10 @@ body {
     color: var(--color-text);
     text-decoration: none;
 
-    background-color: var(--color-bg-1);
+    --li-color-bg: var(--color-bg-1);
+    background-color: var(--li-color-bg);
     &.highlight {
-      background-color: var(--color-bg-row-highlight);
+      --li-color-bg: var(--color-bg-row-highlight);
     }
 
     box-sizing: border-box;
@@ -102,8 +133,9 @@ body {
     background: linear-gradient(
       to right,
       transparent,
-      rgba(from var(--color-bg-1) r g b / 100%) var(--fade-distance),
-      var(--color-bg-1)
+      rgba(from var(--li-color-bg, var(--color-bg-1)) r g b / 100%)
+        var(--fade-distance),
+      var(--li-color-bg, var(--color-bg-1))
     );
   }
 }

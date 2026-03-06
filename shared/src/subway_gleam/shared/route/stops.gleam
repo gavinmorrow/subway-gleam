@@ -12,6 +12,7 @@ import lustre/element/html
 import lustre/element/keyed
 
 import subway_gleam/gtfs/st
+import subway_gleam/shared/component/navbar.{navbar}
 import subway_gleam/shared/component/route_bullet
 import subway_gleam/shared/ffi/geolocation
 import subway_gleam/shared/util/haversine
@@ -72,6 +73,7 @@ pub fn view(model: Model) -> element.Element(msg) {
     fav_stops,
     html.h2([], [html.text("Nearby")]),
     stops_nearby,
+    navbar(),
   ])
 }
 
