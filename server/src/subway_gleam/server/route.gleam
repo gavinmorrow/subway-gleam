@@ -37,6 +37,15 @@ pub fn not_found(req: wisp.Request) -> wisp.Response {
   #(Body(body:), res)
 }
 
+pub fn map(req: wisp.Request) -> wisp.Response {
+  use _req <- lustre_res(req)
+
+  let body = [html.p([], [html.text("Coming soon!")]), navbar()]
+  let res = wisp.response(200)
+
+  #(Body(body:), res)
+}
+
 pub const stops = stops.stops
 
 pub const stop = stop.stop

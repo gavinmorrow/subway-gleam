@@ -131,6 +131,7 @@ fn handler(state: state.State, req: wisp.Request) -> wisp.Response {
 
   case wisp.path_segments(req) {
     [] -> route.index(req)
+    ["map"] -> route.map(req)
     ["stops"] -> route.stops(req, state)
     ["stop", stop_id] -> route.stop(req, state, stop_id)
     ["stop", _stop_id, "alerts"] ->
