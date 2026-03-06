@@ -61,42 +61,6 @@ body {
       z-index: 100;
     }
 
-    & > div {
-      display: flex;
-      justify-content: space-between;
-      flex: 1;
-      align-items: baseline;
-      gap: var(--margin);
-      padding-left: var(--margin);
-
-      position: relative;
-
-      .headsign {
-        flex: 1 1 0%;
-
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        overflow-x: hidden;
-
-        color: var(--color-text-deemphasized);
-      }
-
-      .arrival-time {
-        position: absolute;
-        right: 0;
-
-        --fade-distance: 2em;
-
-        padding-left: var(--fade-distance);
-        background: linear-gradient(
-          to right,
-          transparent,
-          rgba(from var(--color-bg-1) r g b / 100%) var(--fade-distance),
-          var(--color-bg-1)
-        );
-      }
-    }
-
     margin: var(--margin) 0;
     border-radius: calc(var(--bullet-size) / sqrt(2));
 
@@ -104,6 +68,42 @@ body {
       line-height: 1;
       min-width: 0;
     }
+  }
+}
+
+.arrival-list li a > div {
+  display: flex;
+  justify-content: space-between;
+  flex: 1;
+  align-items: baseline;
+  gap: var(--margin);
+  padding-left: var(--margin);
+
+  position: relative;
+
+  .headsign {
+    flex: 1 1 0%;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow-x: hidden;
+
+    color: var(--color-text-deemphasized);
+  }
+
+  .arrival-time {
+    position: absolute;
+    right: 0;
+
+    --fade-distance: 2em;
+
+    padding-left: var(--fade-distance);
+    background: linear-gradient(
+      to right,
+      transparent,
+      rgba(from var(--color-bg-1) r g b / 100%) var(--fade-distance),
+      var(--color-bg-1)
+    );
   }
 }
 
