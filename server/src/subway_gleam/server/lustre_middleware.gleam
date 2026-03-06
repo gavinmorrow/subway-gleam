@@ -52,6 +52,10 @@ fn to_html(lustre_res: LustreRes(msg)) -> element.Element(msg) {
         attribute.href("/static/style.css"),
       ]),
       html.link([
+        attribute.rel("icon"),
+        attribute.href("/static/icons/512.png"),
+      ]),
+      html.link([
         attribute.rel("manifest"),
         attribute.href("/static/manifest.json"),
       ]),
