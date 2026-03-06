@@ -18,6 +18,7 @@ body {
   background-color: var(--color-bg-0);
   color: var(--color-text);
   font-family: system-ui;
+  color-scheme: dark;
 }
 
 .arrival-list,
