@@ -19,7 +19,9 @@ pub fn sse_gtfs(
 
   mist.server_sent_events(
     request: req,
-    initial_response: response.new(200),
+    initial_response: response.new(200)
+      // Prevent nginx from buffering SSE responses
+      |> response.set_header("X-Accel-Buffering", "no"),
     init: fn(self) {
       gtfs_store.subscribe_watcher(self, to: state.gtfs_store)
       log.debug("Subscribed to gtfs store.", with: context)
