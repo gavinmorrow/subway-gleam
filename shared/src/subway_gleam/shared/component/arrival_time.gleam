@@ -15,14 +15,12 @@ pub fn arrival_time(
   cur_time cur_time: Time,
 ) -> element.Element(msg) {
   html.div([attribute.class("arrival-time")], [
-    html.span([], [
+    html.span([attribute.class("relative-time")], [
       html.text(relative_time(from: cur_time.timestamp, to: time)),
     ]),
     case cur_time.time_zone_offset {
       Ok(time_zone_offset) -> {
-        // TODO: is <pre> the right element? should this be smth in css?
-        // TODO: make styled dimmer
-        html.span([], [
+        html.span([attribute.class("time-of-day")], [
           html.text(time_of_day(at: time, offset_by: time_zone_offset)),
         ])
       }

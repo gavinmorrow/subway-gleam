@@ -303,7 +303,17 @@ fn arrival_li(
           route_bullet(route),
           html.div([], [
             headsign |> result.unwrap(or: element.none()),
-            arrival_time(arriving_at: time, cur_time:),
+            html.div(
+              [
+                attribute.classes([
+                  #(
+                    "arriving-soon",
+                    time |> util.min_from(util.current_time()) <= 5,
+                  ),
+                ]),
+              ],
+              [arrival_time(arriving_at: time, cur_time:)],
+            ),
           ]),
         ],
       ),

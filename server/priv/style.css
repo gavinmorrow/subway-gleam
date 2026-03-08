@@ -125,6 +125,7 @@ body {
 
   .arrival-time {
     position: absolute;
+    top: 0;
     right: 0;
 
     --fade-distance: 2em;
@@ -151,6 +152,11 @@ body {
     min-width: 0;
   }
   gap: 0.5em;
+}
+
+.arriving-soon .arrival-time .relative-time {
+  font-weight: bold;
+  text-decoration: underline;
 }
 
 .route-bullet {
