@@ -154,9 +154,12 @@ body {
   gap: 0.5em;
 }
 
-.arriving-soon .arrival-time .relative-time {
+.arriving-very-soon .arrival-time .relative-time {
   font-weight: bold;
   text-decoration: underline;
+}
+.arriving-soon .arrival-time .relative-time {
+  font-weight: bold;
 }
 
 .route-bullet {
