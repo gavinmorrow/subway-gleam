@@ -145,8 +145,7 @@ body {
     background: linear-gradient(
       to right,
       transparent,
-      rgba(from var(--li-color-bg, var(--color-bg-1)) r g b / 100%)
-        var(--fade-distance),
+      var(--li-color-bg, var(--color-bg-1)) var(--fade-distance),
       var(--li-color-bg, var(--color-bg-1))
     );
   }
