@@ -47,9 +47,16 @@ body {
   background-color: oklch(from var(--color-bg-1) l c h / var(--bg-alpha, 1));
   box-shadow: 0.1em 0.1em 1em black;
   border: 1px solid oklch(from var(--color-bg-1) calc(l + 0.1) c h);
+
   @supports (backdrop-filter: blur(0)) {
     --bg-alpha: 0.85;
     backdrop-filter: blur(0.5em);
+  }
+}
+/* Firefox doesn't support this :[[ */
+@media (prefers-reduced-transparency: reduce) {
+  #navbar {
+    --bg-alpha: 1;
   }
 }
 
