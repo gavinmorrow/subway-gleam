@@ -307,6 +307,10 @@ fn arrival_li(
               [
                 attribute.classes([
                   #(
+                    "arriving-now",
+                    time |> util.min_from(util.current_time()) < 1,
+                  ),
+                  #(
                     "arriving-very-soon",
                     time |> util.min_from(util.current_time()) <= 5,
                   ),
