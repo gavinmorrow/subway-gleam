@@ -6,7 +6,7 @@
   --color-text: #eee;
 
   --color-bg-alert-orange: oklch(0.7 0.15 64);
-  --color-text-alert-orange: contrast-color(var(--color-bg-alert-orange));
+  --color-text-alert-orange: black;
 
   --bullet-size: 1.5em;
 
