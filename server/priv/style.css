@@ -72,8 +72,19 @@ body {
     justify-content: space-between;
     align-items: baseline;
 
-    --li-color-bg: var(--color-bg-1);
-    --li-color-text: var(--color-text);
+    /*
+     * The animation always runs. When the flash is not actually happening, the
+     * alternate color is set to the same as the normal color.
+     * The animation sets the variables --li-color-{bg,text}.
+     */
+    --li-normal-color-bg: var(--color-bg-1);
+    --li-normal-color-text: var(--color-text);
+    animation-name: alternate-color-flash;
+    animation-duration: 0.5s;
+    animation-direction: alternate;
+    animation-iteration-count: infinite;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
 
     color: var(--li-color-text);
     text-decoration: none;
@@ -165,19 +176,20 @@ body {
 }
 
 .arrival-list li:has(.arriving-now) * {
-  animation-name: alert-orange-flash;
-  animation-duration: 0.5s;
-  animation-direction: alternate;
-  animation-iteration-count: infinite;
-  animation-timing-function: linear;
-  animation-fill-mode: both;
+  --li-alternate-color-bg: var(--color-bg-alert-orange);
+  --li-alternate-color-text: var(--color-text-alert-orange);
 }
-@keyframes alert-orange-flash {
+@keyframes alternate-color-flash {
   from {
+    --li-color-bg: var(--li-normal-color-bg);
+    --li-color-text: var(--li-normal-color-text);
   }
   to {
-    --li-color-bg: var(--color-bg-alert-orange);
-    --li-color-text: var(--color-text-alert-orange);
+    --li-color-bg: var(--li-alternate-color-bg, var(--li-normal-color-bg));
+    --li-color-text: var(
+      --li-alternate-color-text,
+      var(--li-normal-color-text)
+    );
   }
 }
 .arriving-very-soon .arrival-time .relative-time {
