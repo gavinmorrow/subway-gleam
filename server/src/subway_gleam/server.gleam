@@ -109,6 +109,10 @@ fn mist_handler(
         train.model(state, train_id, req.query)
         |> result.map(shared_train.model_to_json)
       })
+    // I don't love the hard coded path but c'est la vie
+    ["static", "service-worker.js"] ->
+      wisp_handler(req)
+      |> wisp.set_header("Service-Worker-Allowed", "/")
     _ -> wisp_handler(req)
   }
 }

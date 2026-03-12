@@ -59,6 +59,13 @@ fn to_html(lustre_res: LustreRes(msg)) -> element.Element(msg) {
         attribute.rel("manifest"),
         attribute.href("/static/manifest.json"),
       ]),
+      html.script(
+        [
+          attribute.src("/static/register-service-worker.js"),
+          attribute.type_("module"),
+        ],
+        "",
+      ),
       ..head
     ]),
     html.body([], body),
