@@ -12,7 +12,9 @@ erl_crash.dump
 *.key
 
 # Don't check in the generated .js files
-server/priv/**/*.js
+server/priv/stop.js
+server/priv/stops.js
+server/priv/train.js
 
 # Temporary
 gtfs_subway.zip
