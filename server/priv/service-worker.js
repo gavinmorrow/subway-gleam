@@ -15,6 +15,8 @@ const cacheStaticResources = async () => {
 };
 self.addEventListener("install", (event) => {
   event.waitUntil(cacheStaticResources());
+  // TODO: find a way to cache templates.
+  event.waitUntil(cache.add("/stops"));
 });
 
 self.addEventListener("activate", (event) => {
