@@ -42,7 +42,7 @@ async function handleRequest(/** @type {Request} */ req) {
   // Start the work in the background
   const networkPromise = fetch(req).then((res) => {
     console.log(`Fetching ${req.url} from network...`);
-    cache.put(req, res);
+    cache.put(req, res.clone());
     return res;
   });
   if (cachedResponse) console.log(` Serving ${req.url} from cache...`);
