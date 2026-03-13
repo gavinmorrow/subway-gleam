@@ -38,11 +38,11 @@ self.addEventListener("fetch", (event) => {
 /** @returns {Response} */
 async function handleRequest(/** @type {Request} */ req) {
   const cache = await getCache();
-  const cachedResponse = await cache.match(req);
+  const cachedResponse = await cache.match(req, { ignoreSearch: true });
   // Start the work in the background
   const networkPromise = fetch(req).then((res) => {
     console.log(`Fetching ${req.url} from network...`);
-    cache.put(req, res.clone());
+    cache.add(req, res.clone());
     return res;
   });
   if (cachedResponse) console.log(` Serving ${req.url} from cache...`);
